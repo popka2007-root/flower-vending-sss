@@ -165,7 +165,12 @@ flower-vending-system/
 
 ### Установка зависимостей
 ```bash
-# Установка базовых зависимостей, средств разработки и UI
+# ВАЖНО: Все команды должны выполняться из корневой папки проекта (где находится файл pyproject.toml).
+
+# Установка самого пакета в режиме разработки и всех необходимых зависимостей
+pip install -e .[ui,dev,serial]
+
+# Или установка базовых зависимостей, если используете старый подход:
 pip install -r requirements.txt -r requirements-dev.txt -r requirements-ui.txt
 
 # Или с помощью Make:
@@ -174,8 +179,23 @@ make install-all
 
 ### Запуск симулятора с UI
 Это запустит приложение с виртуальными устройствами (Mock), что идеально подходит для тестирования логики на компьютере.
+**Примечание для пользователей Windows:** Запускайте команду из корня проекта.
+
+Если вы установили проект через `pip install -e .` (рекомендуется):
 ```bash
 python -m flower_vending simulator-ui --config config/examples/machine.simulator.yaml
+```
+
+Если вы не устанавливали пакет (без `pip install -e .`), используйте переменную `PYTHONPATH`:
+```bash
+# Для Windows (CMD):
+set PYTHONPATH=src && python -m flower_vending simulator-ui --config config/examples/machine.simulator.yaml
+
+# Для Windows (PowerShell):
+$env:PYTHONPATH="src"; python -m flower_vending simulator-ui --config config/examples/machine.simulator.yaml
+
+# Для Linux/macOS:
+PYTHONPATH=src python -m flower_vending simulator-ui --config config/examples/machine.simulator.yaml
 ```
 
 ### Полезные CLI-команды
