@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QProgressBar,
+    QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -176,10 +177,9 @@ class PaymentScreenWidget(QWidget):
         if is_cash:
             self._update_progress(model)
 
-        while self._sim_layout.count():
-            item = self._sim_layout.takeAt(0)
-            if item is not None and item.widget() is not None:
-                item.widget().deleteLater()
+        while (item := self._sim_layout.takeAt(0)) is not None:
+            if w := item.widget():
+                w.deleteLater()
 
         for action in model.quick_insert_actions:
             btn = QPushButton(action.label)
@@ -192,14 +192,28 @@ class PaymentScreenWidget(QWidget):
                 f"background: #FFFFFF; color: {BrandColors.PURPLE_600}; }}"
                 f"QPushButton:hover {{ background: {BrandColors.PURPLE_600}; color: #FFFFFF; }}"
             )
-            btn.clicked.connect(lambda checked, a=action.action_id: self.simulator_action_requested.emit(a))
+            btn.clicked.connect(
+                lambda checked, a=action.action_id: self.simulator_action_requested.emit(a)
+            )
             self._sim_layout.addWidget(btn)
         self._sim_layout.addStretch(1)
 
     def _update_progress(self, model: PaymentScreenViewModel) -> None:
         try:
-            price = int(model.price_text.replace('\u202f', '').replace('\u00a0', '').replace(' ', '').replace('₽', '').strip())
-            accepted = int(model.accepted_text.replace('\u202f', '').replace('\u00a0', '').replace(' ', '').replace('₽', '').strip())
+            price = int(
+                model.price_text.replace("\u202f", "")
+                .replace("\u00a0", "")
+                .replace(" ", "")
+                .replace("₽", "")
+                .strip()
+            )
+            accepted = int(
+                model.accepted_text.replace("\u202f", "")
+                .replace("\u00a0", "")
+                .replace(" ", "")
+                .replace("₽", "")
+                .strip()
+            )
         except (ValueError, AttributeError):
             return
         if price <= 0:

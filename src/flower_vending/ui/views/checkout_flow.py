@@ -183,7 +183,9 @@ class CheckoutFlow(QWidget):
         self._order_card = QWidget()
         self._order_card.setStyleSheet("background:#F9FAFB; border-radius:14px;")
         self._order_card_layout = QVBoxLayout(self._order_card)
-        self._order_card_layout.setContentsMargins(_px(self, 5), _px(self, 4), _px(self, 5), _px(self, 4))
+        self._order_card_layout.setContentsMargins(
+            _px(self, 5), _px(self, 4), _px(self, 5), _px(self, 4)
+        )
         self._order_card_layout.setSpacing(_px(self, 1))
 
         order_wrap = QWidget()
@@ -381,10 +383,9 @@ class CheckoutFlow(QWidget):
         self._pay_btn.setText(f"Оплатить {_fmt(amount)}")
 
     def set_order_items(self, items: list[str]) -> None:
-        while self._order_card_layout.count():
-            item = self._order_card_layout.takeAt(0)
-            if item is not None and item.widget() is not None:
-                item.widget().deleteLater()
+        while (item := self._order_card_layout.takeAt(0)) is not None:
+            if w := item.widget():
+                w.deleteLater()
         for name in items:
             lbl = QLabel(name)
             lbl.setFont(_f(14, 400))

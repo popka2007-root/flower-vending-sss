@@ -4,14 +4,24 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QGridLayout, QHBoxLayout, QLabel, QLayout, QMessageBox, 
-    QPushButton, QScrollArea, QStackedWidget, QVBoxLayout, QWidget
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLayout,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 from flower_vending.ui.design_tokens import BrandColors
 from flower_vending.ui.viewmodels.screens import (
-    ActionButtonViewModel, ServiceActionGroupViewModel, 
-    ServiceScreenViewModel, ServiceTabViewModel
+    ActionButtonViewModel,
+    ServiceActionGroupViewModel,
+    ServiceScreenViewModel,
+    ServiceTabViewModel,
 )
 from flower_vending.ui.widgets.modern import ToggleSwitch
 
@@ -36,7 +46,7 @@ def _wrap_card(widget: QWidget, title: str, body: QWidget | None = None) -> QWid
     head.setStyleSheet("background: #F8FAFC; border-radius: 16px 16px 0 0;")
     hl = QHBoxLayout(head)
     hl.setContentsMargins(_px(widget, 4), 0, _px(widget, 4), 0)
-    
+
     t = QLabel(title.upper())
     t.setStyleSheet("font-size: 14px; font-weight: 700; color: #64748B; letter-spacing: 0.5px;")
     hl.addWidget(t)
@@ -65,23 +75,18 @@ class ServiceScreenWidget(QWidget):
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(_px(self, 8), _px(self, 6), _px(self, 8), _px(self, 6))
         self._layout.setSpacing(_px(self, 4))
-        
+
         self._tab_buttons = []
         self._tab_stack = None
 
     @staticmethod
     def _clear_layout(layout: QLayout) -> None:
-        while layout.count():
-            item = layout.takeAt(0)
-            if item is None:
-                continue
-            w = item.widget()
-            if w is not None:
+        while (item := layout.takeAt(0)) is not None:
+            if w := item.widget():
                 w.setParent(None)
                 w.deleteLater()
                 continue
-            subl = item.layout()
-            if subl is not None:
+            if subl := item.layout():
                 ServiceScreenWidget._clear_layout(subl)
 
     def bind(self, model: ServiceScreenViewModel | object) -> None:
@@ -114,9 +119,9 @@ class ServiceScreenWidget(QWidget):
         for tab in tabs:
             page = self._build_tab_page(tab)
             self._tab_stack.addWidget(page)
-            
+
         self._layout.addWidget(self._tab_stack, 1)
-        
+
         if self._tab_buttons:
             self._switch_tab(0)
 
@@ -186,7 +191,11 @@ class ServiceScreenWidget(QWidget):
             ("Состояние", k.machine_state, "#0EA5E9"),
             ("Блокировки", str(k.blockers_count), "#EF4444" if k.blockers_count else "#16A34A"),
             ("Транзакции", str(k.unresolved_count), "#EF4444" if k.unresolved_count else "#16A34A"),
-            ("Устройства", f"{k.devices_ok}/{k.devices_total}", "#16A34A" if k.devices_ok == k.devices_total else "#D97706"),
+            (
+                "Устройства",
+                f"{k.devices_ok}/{k.devices_total}",
+                "#16A34A" if k.devices_ok == k.devices_total else "#D97706",
+            ),
         ]
         for cap, val, color in stats:
             card = QWidget()
@@ -218,9 +227,9 @@ class ServiceScreenWidget(QWidget):
         btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn.setEnabled(action.enabled)
         btn.setFixedHeight(_px(self, 11))  # Увеличили высоту кнопок для удобного тапа
-        
+
         normal_css, pressed_css = self._style_for_action(getattr(action, "variant", "default"))
-        
+
         btn.setStyleSheet(
             f"""
             QPushButton {{
@@ -250,7 +259,7 @@ class ServiceScreenWidget(QWidget):
         bl = QGridLayout(body)
         bl.setContentsMargins(0, 0, 0, 0)
         bl.setSpacing(_px(self, 2))
-        
+
         columns = 2
         for idx, action in enumerate(group.actions):
             if action is None:
@@ -259,7 +268,7 @@ class ServiceScreenWidget(QWidget):
             row = idx // columns
             col = idx % columns
             bl.addWidget(btn, row, col)
-            
+
         return _wrap_card(self, group.label, body)
 
     def _build_product_toggles(self, title: str, toggles) -> QWidget:
@@ -273,14 +282,14 @@ class ServiceScreenWidget(QWidget):
             rl = QHBoxLayout(row)
             # Увеличенные отступы внутри строк переключателей
             rl.setContentsMargins(_px(self, 4), _px(self, 3), _px(self, 4), _px(self, 3))
-            
+
             lbl = QLabel(act.label)
             lbl.setStyleSheet("font-size: 16px; font-weight: 500; color: #0F172A;")
-            
+
             sw = ToggleSwitch(act.enabled)
             aid = act.action_id
             sw.toggled.connect(lambda _state, a=aid: self.action_requested.emit(a))
-            
+
             rl.addWidget(lbl, 1)
             rl.addWidget(sw, 0, Qt.AlignmentFlag.AlignVCenter)
             bl.addWidget(row)
@@ -289,8 +298,14 @@ class ServiceScreenWidget(QWidget):
     def _confirm_action(self, action_id: str) -> None:
         labels = {
             "exit_service": ("Выйти из сервисного режима?", "Вы уверены, что хотите выйти?"),
-            "clear_restricted_state": ("Сбросить все блокировки?", "Будут сброшены все активные ограничения."),
-            "clear_pending_transactions": ("Сбросить незавершённые транзакции?", "Все незавершённые транзакции будут отменены."),
+            "clear_restricted_state": (
+                "Сбросить все блокировки?",
+                "Будут сброшены все активные ограничения.",
+            ),
+            "clear_pending_transactions": (
+                "Сбросить незавершённые транзакции?",
+                "Все незавершённые транзакции будут отменены.",
+            ),
         }
         title, msg = labels.get(action_id, ("Подтвердите действие", "Вы уверены?"))
         reply = QMessageBox.question(
