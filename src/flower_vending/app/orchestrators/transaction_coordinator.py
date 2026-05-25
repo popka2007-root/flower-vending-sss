@@ -19,16 +19,10 @@ from flower_vending.domain.value_objects import (
     TransactionId,
 )
 
-# Terminal states that allow a new transaction to safely replace the active one.
-# This prevents concurrency conflicts when a transaction is logically complete
-# but its active state has not yet been cleared by the controller.
-_TERMINAL_STATUSES = {
-    TransactionStatus.COMPLETED,
-    TransactionStatus.CANCELLED,
-    TransactionStatus.FAULTED,
-    TransactionStatus.AMBIGUOUS,
-    TransactionStatus.PICKUP_TIMED_OUT,
-}
+# Terminal states that allow a new transaction to replace the active one.
+# Prevents ConcurrencyConflictError when confirm_pickup() completes a transaction
+# but clear_active() hasn't run yet.
+_TERMINAL_STATUSES = {TransactionStatus.COMPLETED, TransactionStatus.CANCELLED}
 
 
 class TransactionCoordinator:
