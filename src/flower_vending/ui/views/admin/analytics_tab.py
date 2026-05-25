@@ -319,9 +319,11 @@ class AnalyticsTab(QWidget):
         self._render_top_products(model.top_products)
 
     def _render_top_products(self, top_products: tuple[tuple[str, str, float], ...]) -> None:
-        while (item := self._top_list.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
+        for i in reversed(range(self._top_list.count())):
+            item = self._top_list.takeAt(i)
+            if item is not None:
+                if w := item.widget():
+                    w.deleteLater()
 
         if not top_products:
             lbl = QLabel("Нет данных о продажах")
