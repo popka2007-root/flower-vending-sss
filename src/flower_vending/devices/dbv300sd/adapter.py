@@ -98,7 +98,6 @@ class DBV300SDValidator(BillValidator):
                     await self._protocol.set_acceptance_enabled(self._transport, False)
                 self._acceptance_enabled = False
                 self._stop_requested.clear()
-                self._started = True
                 self._health = replace(
                     self._health,
                     state=DeviceOperationalState.READY,
@@ -108,6 +107,7 @@ class DBV300SDValidator(BillValidator):
                     self._poll_loop(),
                     name=f"{self.name}{_POLL_TASK_NAME_SUFFIX}",
                 )
+                self._started = True
             except Exception as exc:
                 self._health = self._fault_health("startup_failed", str(exc))
                 self._poll_task = None
