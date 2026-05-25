@@ -5,7 +5,7 @@ from flower_vending.domain.entities import TransactionStatus
 from flower_vending.domain.exceptions import ConcurrencyConflictError
 
 
-def test_create_transaction_fails_if_active_not_terminal():
+def test_create_transaction_fails_if_active_not_terminal() -> None:
     coordinator = TransactionCoordinator()
 
     # Create an initial transaction
@@ -37,7 +37,7 @@ def test_create_transaction_fails_if_active_not_terminal():
         TransactionStatus.PICKUP_TIMED_OUT,
     ],
 )
-def test_create_transaction_succeeds_if_active_is_terminal(terminal_status):
+def test_create_transaction_succeeds_if_active_is_terminal(terminal_status: TransactionStatus) -> None:
     coordinator = TransactionCoordinator()
 
     # Create initial transaction
@@ -74,7 +74,7 @@ def test_create_transaction_succeeds_if_active_is_terminal(terminal_status):
         TransactionStatus.AMBIGUOUS,
     ],
 )
-def test_create_transaction_raises_if_active_is_locked(locked_status):
+def test_create_transaction_raises_if_active_is_locked(locked_status: TransactionStatus) -> None:
     from flower_vending.domain.exceptions import TerminalLockedError
     coordinator = TransactionCoordinator()
 
