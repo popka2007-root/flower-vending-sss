@@ -95,10 +95,6 @@ class DBV300SDValidator(BillValidator):
                 return
             self._health = replace(self._health, state=DeviceOperationalState.INITIALIZING)
             await self._transport.open()
-            # FIX: Zombie poll task guard — if start() fails AFTER create_task
-            # but BEFORE _started = True, the poll task runs on a half-initialized
-            # transport. We create the task last and track it so the except
-            # handler can cancel it.
             try:
                 await self._protocol.initialize(self._transport)
                 if self._config.startup_disable_acceptance:
