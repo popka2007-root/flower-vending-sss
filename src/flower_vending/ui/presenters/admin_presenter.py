@@ -26,7 +26,10 @@ class AdminPresenter:
     def present_orders(self, active_filter: str = "all") -> AdminOrdersTabViewModel:
         entries = self._facade.catalog_entries()
         orders: list[AdminOrderViewModel] = []
-        revenue = 0; pending = 0; completed = 0; cancelled = 0
+        revenue = 0
+        pending = 0
+        completed = 0
+        cancelled = 0
 
         statuses = ["completed", "pending", "cancelled", "completed", "pending"]
         stxt = {"completed": "Завершён", "pending": "В обработке", "cancelled": "Отменён"}
@@ -38,19 +41,22 @@ class AdminPresenter:
             if active_filter != "all" and s != active_filter:
                 continue
             if s == "completed":
-                completed += 1; revenue += entry.price_minor_units
+                completed += 1
+                revenue += entry.price_minor_units
             elif s == "pending":
                 pending += 1
             else:
                 cancelled += 1
-            orders.append(AdminOrderViewModel(
-                order_id=f"ORD-{1000 + i:04d}",
-                items_summary=f"{entry.display_name} × 1",
-                total_text=format_money(entry.price_minor_units, entry.currency_code),
-                status=s,
-                status_text=stxt[s],
-                date="2026-05-22",
-            ))
+            orders.append(
+                AdminOrderViewModel(
+                    order_id=f"ORD-{1000 + i:04d}",
+                    items_summary=f"{entry.display_name} × 1",
+                    total_text=format_money(entry.price_minor_units, entry.currency_code),
+                    status=s,
+                    status_text=stxt[s],
+                    date="2026-05-22",
+                )
+            )
 
         return AdminOrdersTabViewModel(
             orders=tuple(orders),
@@ -74,8 +80,15 @@ class AdminPresenter:
             pending_count=len(entries) // 3,
             completed_count=len(entries),
             cancelled_count=1,
-            chart_days={"Пн": total // 4, "Вт": total // 3, "Ср": total // 2, "Чт": total,
-                        "Пт": total // 2, "Сб": total // 3, "Вс": total // 4},
+            chart_days={
+                "Пн": total // 4,
+                "Вт": total // 3,
+                "Ср": total // 2,
+                "Чт": total,
+                "Пт": total // 2,
+                "Сб": total // 3,
+                "Вс": total // 4,
+            },
             payment_methods={"cash": 65.0, "card": 25.0, "sbp": 10.0},
             top_products=tuple(top),
         )
@@ -85,12 +98,17 @@ class AdminPresenter:
         products = []
         for e in entries:
             img = e.metadata.get("image_path") or e.metadata.get("image") or None
-            products.append(AdminCatalogItemViewModel(
-                product_id=e.product_id, title=e.display_name,
-                price_text=format_money(e.price_minor_units, e.currency_code),
-                category=e.category, stock=e.quantity, active=e.available,
-                image_path=img,
-            ))
+            products.append(
+                AdminCatalogItemViewModel(
+                    product_id=e.product_id,
+                    title=e.display_name,
+                    price_text=format_money(e.price_minor_units, e.currency_code),
+                    category=e.category,
+                    stock=e.quantity,
+                    active=e.available,
+                    image_path=img,
+                )
+            )
         return AdminCatalogTabViewModel(products=tuple(products), can_add=True)
 
     def present_windows(self) -> AdminWindowsTabViewModel:
@@ -103,18 +121,27 @@ class AdminPresenter:
             if snap.active_transaction_id and s == "free":
                 s = "busy"
                 detail = f"Заказ #{snap.active_transaction_id[:8]}"
-            windows.append(AdminWindowViewModel(
-                window_id=wid,
-                status=s,
-                status_text={"free": "Свободно", "busy": "Занято", "maintenance": "Обслуживание"}[s],
-                detail_text=detail if s == "free" else (
-                    f"Заказ #{snap.active_transaction_id[:8]}" if s == "busy" and snap.active_transaction_id
-                    else "Плановое ТО"),
-            ))
+            windows.append(
+                AdminWindowViewModel(
+                    window_id=wid,
+                    status=s,
+                    status_text={
+                        "free": "Свободно",
+                        "busy": "Занято",
+                        "maintenance": "Обслуживание",
+                    }[s],
+                    detail_text=detail
+                    if s == "free"
+                    else (
+                        f"Заказ #{snap.active_transaction_id[:8]}"
+                        if s == "busy" and snap.active_transaction_id
+                        else "Плановое ТО"
+                    ),
+                )
+            )
         return AdminWindowsTabViewModel(
             windows=tuple(windows),
-            activity_log=tuple(self._log_entries[-10:]) if self._log_entries
-            else ("Нет записей",),
+            activity_log=tuple(self._log_entries[-10:]) if self._log_entries else ("Нет записей",),
         )
 
     def free_window(self, window_id: str) -> None:
@@ -127,19 +154,31 @@ class AdminPresenter:
             return
         new = "free" if current == "maintenance" else "maintenance"
         self._window_states[window_id] = new
-        self._log_entries.append(f"Окно {window_id}: {'переведено в обслуживание' if new == 'maintenance' else 'возвращено в работу'}")
+        self._log_entries.append(
+            f"Окно {window_id}: {'переведено в обслуживание' if new == 'maintenance' else 'возвращено в работу'}"
+        )
 
     def present_settings(self) -> AdminSettingsTabViewModel:
         snap = self._facade.machine_snapshot()
         pm = snap.payment_methods or {"cash": True}
         return AdminSettingsTabViewModel(
-            vending_name="Экспресс Букет", working_hours="Круглосуточно",
-            contact_phone="+7 (999) 123-45-67", support_email="support@express-bouquet.ru",
-            accept_cash=pm.get("cash", True), accept_card=pm.get("card", False),
+            vending_name="Экспресс Букет",
+            working_hours="Круглосуточно",
+            contact_phone="+7 (999) 123-45-67",
+            support_email="support@express-bouquet.ru",
+            accept_cash=pm.get("cash", True),
+            accept_card=pm.get("card", False),
             accept_sbp=pm.get("sbp", False),
-            min_order_amount=1000, delivery_time="2-3",
-            auto_restock=True, restock_threshold=3,
-            notify_on_order=True, notify_on_low_stock=True, receipt_printer=False,
-            discounts_enabled=False, discount_percent=10, price_markup=0,
-            current_pin="", new_pin="",
+            min_order_amount=1000,
+            delivery_time="2-3",
+            auto_restock=True,
+            restock_threshold=3,
+            notify_on_order=True,
+            notify_on_low_stock=True,
+            receipt_printer=False,
+            discounts_enabled=False,
+            discount_percent=10,
+            price_markup=0,
+            current_pin="",
+            new_pin="",
         )

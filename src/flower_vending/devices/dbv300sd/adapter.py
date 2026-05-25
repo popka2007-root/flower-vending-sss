@@ -78,6 +78,9 @@ class DBV300SDValidator(BillValidator):
                 "protocol_kind": config.protocol_kind.value,
             },
         )
+        self._consecutive_faults = 0
+        self._backoff_factor = 2.0
+        self._max_backoff_s = 30.0
 
     @property
     def name(self) -> str:
@@ -216,13 +219,23 @@ class DBV300SDValidator(BillValidator):
         except asyncio.TimeoutError:
             return None
 
+    def _reset_fault_counter(self) -> None:
+        self._consecutive_faults = 0
+
+    def _increment_fault_counter(self) -> None:
+        self._consecutive_faults += 1
+
+    async def _apply_backoff(self) -> None:
+        poll_interval = self._config.poll_interval_s
+        if self._consecutive_faults > 0:
+            poll_interval = min(
+                poll_interval * (self._backoff_factor ** min(self._consecutive_faults, 5)),
+                self._max_backoff_s,
+            )
+        await asyncio.sleep(poll_interval)
+
     async def _poll_loop(self) -> None:
-        # FIX: Fault backoff counter — after consecutive faults the poll
-        # interval increases exponentially to prevent flooding the event
-        # bus with thousands of VALIDATOR_FAULT events per second (see E9).
-        consecutive_faults = 0
-        backoff_factor = 2.0
-        max_backoff_s = 30.0
+        self._reset_fault_counter()
         while not self._stop_requested.is_set():
             try:
                 protocol_events = await self._protocol.poll(self._transport)
@@ -234,22 +247,16 @@ class DBV300SDValidator(BillValidator):
                 )
                 for event in protocol_events:
                     await self._emit_event(self._translate_event(event))
-                consecutive_faults = 0
+                self._reset_fault_counter()
             except asyncio.CancelledError:
                 raise
             except HardwareConfirmationRequiredError as exc:
-                await self._handle_fault(exc)
+                self._health = self._fault_health("hardware_confirmation_required", str(exc))
                 return
             except Exception as exc:
                 await self._handle_fault(exc)
-                consecutive_faults += 1
-            poll_interval = self._config.poll_interval_s
-            if consecutive_faults > 0:
-                poll_interval = min(
-                    poll_interval * (backoff_factor ** min(consecutive_faults, 5)),
-                    max_backoff_s,
-                )
-            await asyncio.sleep(poll_interval)
+                self._increment_fault_counter()
+            await self._apply_backoff()
 
     async def _emit_event(self, event: BillValidatorEvent) -> None:
         if event.event_type is BillValidatorEventType.VALIDATOR_DISABLED:

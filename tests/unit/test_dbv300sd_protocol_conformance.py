@@ -10,7 +10,12 @@ from flower_vending.devices.contracts import (
     ValidatorProtocolEvent,
 )
 from flower_vending.devices.dbv300sd.adapter import _build_protocol
-from flower_vending.devices.dbv300sd.config import DBV300ProtocolKind, DBV300SDValidatorConfig, DBV300TransportKind, SerialTransportSettings
+from flower_vending.devices.dbv300sd.config import (
+    DBV300ProtocolKind,
+    DBV300SDValidatorConfig,
+    DBV300TransportKind,
+    SerialTransportSettings,
+)
 from flower_vending.devices.dbv300sd.protocol import (
     DBV300Protocol,
     DeferredMDBProtocol,

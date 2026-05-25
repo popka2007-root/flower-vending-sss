@@ -95,9 +95,7 @@ class TestConcurrentPurchases:
                     "allow_cash_sales": machine.allow_cash_sales,
                 }
 
-            poll_results = await asyncio.gather(
-                *[poll_status() for _ in range(CONCURRENT_POLLS)]
-            )
+            poll_results = await asyncio.gather(*[poll_status() for _ in range(CONCURRENT_POLLS)])
             assert len(poll_results) == CONCURRENT_POLLS
             first = poll_results[0]
             assert all(r == first for r in poll_results), "status should be consistent"

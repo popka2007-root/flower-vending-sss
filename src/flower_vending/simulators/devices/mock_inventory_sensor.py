@@ -18,7 +18,9 @@ class MockInventorySensor(MockManagedDevice, InventorySensor):
         super().__init__(name, command_policy=command_policy)
         self._slot_states = dict(slot_states or {})
 
-    def set_slot_presence(self, slot_id: str, *, has_product: bool, confidence: float = 1.0) -> None:
+    def set_slot_presence(
+        self, slot_id: str, *, has_product: bool, confidence: float = 1.0
+    ) -> None:
         self._slot_states[slot_id] = (has_product, confidence)
         self._heartbeat(slot_id=slot_id, has_product=has_product, confidence=confidence)
 

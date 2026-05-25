@@ -9,14 +9,27 @@ from typing import TYPE_CHECKING, Any
 
 from flower_vending.app import ApplicationCore
 from flower_vending.app.fsm import MachineState
-from flower_vending.domain.commands.purchase_commands import AcceptCash, CancelPurchase, ConfirmPickup, StartPurchase
+from flower_vending.domain.commands.purchase_commands import (
+    AcceptCash,
+    CancelPurchase,
+    ConfirmPickup,
+    StartPurchase,
+)
 from flower_vending.domain.commands.recovery_commands import RecoverInterruptedTransaction
-from flower_vending.domain.commands.service_commands import EnterServiceMode, LockPurchaseButton, ToggleProductCommand
+from flower_vending.domain.commands.service_commands import (
+    EnterServiceMode,
+    LockPurchaseButton,
+    ToggleProductCommand,
+)
 from flower_vending.domain.entities import Product, RecoveryStatus, Slot, Transaction
 from flower_vending.domain.events import DomainEvent
 from flower_vending.domain.value_objects import Amount, CorrelationId, ProductId, SlotId
 from flower_vending.platform.common import PlatformProfile
-from flower_vending.simulators.control import EventLogEntry, RecentEventStore, SimulatorControlService
+from flower_vending.simulators.control import (
+    EventLogEntry,
+    RecentEventStore,
+    SimulatorControlService,
+)
 from flower_vending.ui.theme import ThemeName, set_theme
 
 if TYPE_CHECKING:
@@ -187,7 +200,9 @@ class UiApplicationFacade:
     def platform_profile(self) -> PlatformProfile | None:
         return self._platform_profile
 
-    async def start_cash_checkout(self, *, product_id: str, slot_id: str, correlation_id: str) -> str:
+    async def start_cash_checkout(
+        self, *, product_id: str, slot_id: str, correlation_id: str
+    ) -> str:
         logger.info("start_cash_checkout", extra={"product_id": product_id, "slot_id": slot_id})
         entry = self.get_catalog_entry(product_id, slot_id)
         transaction_id = await self._core.command_bus.dispatch(
@@ -262,11 +277,11 @@ class UiApplicationFacade:
         if "payment_methods" in settings:
             self.set_payment_methods(settings["payment_methods"])
         if "vending_name" in settings:
-            self._machine_settings = getattr(self, '_machine_settings', {})
+            self._machine_settings = getattr(self, "_machine_settings", {})
             self._machine_settings.update(settings)
 
     def change_pin(self, new_pin: str) -> None:
-        self._machine_settings = getattr(self, '_machine_settings', {})
+        self._machine_settings = getattr(self, "_machine_settings", {})
         self._machine_settings["pin"] = new_pin
 
     def set_service_visible(self, visible: bool) -> None:
@@ -301,7 +316,9 @@ class UiApplicationFacade:
     def remove_product(self, product_id: str) -> bool:
         return self._core.inventory_service.remove_product(product_id)
 
-    def edit_product(self, product_id: str, name: str, price_minor: int, category: str, stock: int) -> None:
+    def edit_product(
+        self, product_id: str, name: str, price_minor: int, category: str, stock: int
+    ) -> None:
         svc = self._core.inventory_service
         try:
             product = svc._products[product_id]
@@ -316,7 +333,15 @@ class UiApplicationFacade:
         if slot is not None:
             slot.quantity = max(0, min(stock, slot.capacity))
 
-    def add_product(self, product_id: str, name: str, price_minor: int, category: str, stock: int, enabled: bool = True) -> None:
+    def add_product(
+        self,
+        product_id: str,
+        name: str,
+        price_minor: int,
+        category: str,
+        stock: int,
+        enabled: bool = True,
+    ) -> None:
         pid = ProductId(product_id)
         sid = SlotId(product_id)
         product = Product(
@@ -355,10 +380,18 @@ class UiApplicationFacade:
         self._core.machine_status_service.clear_drift()
 
     def clear_simulator_recovery_state(self) -> bool:
-        if self._simulator_controls is None or self._repositories is None or self._machine_id is None:
+        if (
+            self._simulator_controls is None
+            or self._repositories is None
+            or self._machine_id is None
+        ):
             return False
         unresolved = tuple(self._core.transaction_coordinator.unresolved_transactions())
-        if not unresolved and "recovery_pending" not in self._core.machine_status_service.runtime.status.sale_blockers:
+        if (
+            not unresolved
+            and "recovery_pending"
+            not in self._core.machine_status_service.runtime.status.sale_blockers
+        ):
             return False
 
         for transaction in unresolved:
@@ -370,7 +403,10 @@ class UiApplicationFacade:
         for blocker in tuple(self._core.machine_status_service.runtime.status.sale_blockers):
             if blocker in {"recovery_pending", "manual_review_required"}:
                 self._core.machine_status_service.unblock_sales(blocker)
-        if self._core.fsm.current_state in {MachineState.RECOVERY_PENDING, MachineState.MANUAL_REVIEW}:
+        if self._core.fsm.current_state in {
+            MachineState.RECOVERY_PENDING,
+            MachineState.MANUAL_REVIEW,
+        }:
             self._core.fsm.force_state(MachineState.IDLE, "simulator_restricted_state_cleared")
             self._core.machine_status_service.set_machine_state(self._core.fsm.current_state)
 

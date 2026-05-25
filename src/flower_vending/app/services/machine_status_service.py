@@ -9,7 +9,9 @@ from flower_vending.payments.change_manager import ChangeManager
 
 
 class MachineStatusService:
-    def __init__(self, runtime: MachineRuntimeAggregate, change_manager: ChangeManager | None = None) -> None:
+    def __init__(
+        self, runtime: MachineRuntimeAggregate, change_manager: ChangeManager | None = None
+    ) -> None:
         self._runtime = runtime
         self._change_manager = change_manager
 

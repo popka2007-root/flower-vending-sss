@@ -21,10 +21,14 @@ _IDLE_TIMEOUT_MS = 60_000
 
 def reset_simulator_state(*, config_path: str) -> tuple[Path, ...]:
     config, _, report = validate_config_file(config_path, prepare_directories=True)
-    database_path = resolve_runtime_path(report.state_root, config.persistence.sqlite_path).resolve()
+    database_path = resolve_runtime_path(
+        report.state_root, config.persistence.sqlite_path
+    ).resolve()
     state_root = report.state_root.resolve()
     if database_path != state_root and not database_path.is_relative_to(state_root):
-        raise RuntimeError(f"refusing to reset simulator state outside runtime state root: {database_path}")
+        raise RuntimeError(
+            f"refusing to reset simulator state outside runtime state root: {database_path}"
+        )
 
     removed: list[Path] = []
     for candidate in (

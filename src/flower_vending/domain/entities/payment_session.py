@@ -40,7 +40,9 @@ class PaymentSession:
         if self.status == PaymentSessionStatus.CANCELLED:
             raise PaymentCancelledError("payment session has been cancelled")
         self.accepted_bills.append(bill_minor_units)
-        self.accepted_amount = Amount(self.accepted_amount.minor_units + bill_minor_units, self.accepted_amount.currency)
+        self.accepted_amount = Amount(
+            self.accepted_amount.minor_units + bill_minor_units, self.accepted_amount.currency
+        )
 
     def cancel(self) -> None:
         self.status = PaymentSessionStatus.CANCELLED

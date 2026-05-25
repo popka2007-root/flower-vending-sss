@@ -31,7 +31,10 @@ class ChangeReserve:
 
     @property
     def reserved_total(self) -> Amount:
-        total = sum(denomination * count for denomination, count in self.reserved_counts_by_denomination.items())
+        total = sum(
+            denomination * count
+            for denomination, count in self.reserved_counts_by_denomination.items()
+        )
         return Amount(total, self.currency)
 
     def release(self) -> None:

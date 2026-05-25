@@ -10,7 +10,11 @@ from pathlib import Path
 
 from flower_vending.app import ApplicationCore, build_application_core
 from flower_vending.app.journal import ApplicationJournal
-from flower_vending.domain.commands.purchase_commands import AcceptCash, ConfirmPickup, StartPurchase
+from flower_vending.domain.commands.purchase_commands import (
+    AcceptCash,
+    ConfirmPickup,
+    StartPurchase,
+)
 from flower_vending.domain.entities import MoneyInventory, Product, Slot
 from flower_vending.domain.value_objects import Amount, Currency, ProductId, SlotId
 from flower_vending.app.services import InventoryService
@@ -94,13 +98,17 @@ class SimulationHarness:
         )
 
         validator = MockBillValidator(supported_bill_values=accepted_bill_denominations)
-        change_dispenser = MockChangeDispenser(inventory=dict(money_inventory.accounting_counts_by_denomination))
+        change_dispenser = MockChangeDispenser(
+            inventory=dict(money_inventory.accounting_counts_by_denomination)
+        )
         motor_controller = MockMotorController()
         cooling_controller = MockCoolingController()
         window_controller = MockWindowController()
         temperature_sensor = MockTemperatureSensor(celsius=temperature_celsius)
         door_sensor = MockDoorSensor(is_open=service_door_open)
-        inventory_sensor = MockInventorySensor(slot_states={slot_id: (inventory_presence, inventory_confidence)})
+        inventory_sensor = MockInventorySensor(
+            slot_states={slot_id: (inventory_presence, inventory_confidence)}
+        )
         position_sensor = MockPositionSensor()
         watchdog = MockWatchdogAdapter()
 
@@ -263,7 +271,9 @@ class SimulationHarness:
             transaction_id=transaction.transaction_id.value if transaction else None,
             transaction_status=transaction.status.value if transaction else None,
             event_types=tuple(self.recorder.event_types),
-            sale_blockers=tuple(sorted(self.core.machine_status_service.runtime.status.sale_blockers)),
+            sale_blockers=tuple(
+                sorted(self.core.machine_status_service.runtime.status.sale_blockers)
+            ),
             errors=tuple(errors or ()),
             notes=tuple(notes or ()),
         )

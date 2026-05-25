@@ -475,7 +475,7 @@ VendingController.handle_vend_authorized():
 If power loss between step 3 and 4:
   RecoveryManager detects motor_vend_requested intent WITH outcome
   → motor vend SUCCEEDED, proceed to inventory check
-  
+
 If power loss between step 4 and 5:
   RecoveryManager detects inventory_decrement intent WITHOUT outcome
   → classify_intent("inventory_decrement") = manual_review_required

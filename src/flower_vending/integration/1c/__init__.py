@@ -67,6 +67,7 @@ class AsyncioHttpTransport:
 
     def set_basic_auth(self, username: str, password: str) -> None:
         import base64
+
         credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
         self._auth_header = f"Basic {credentials}"
 
@@ -113,16 +114,12 @@ class AsyncioHttpTransport:
                 writer.write(body_bytes)
             await writer.drain()
 
-            response_line = await asyncio.wait_for(
-                reader.readline(), timeout=self._timeout_s
-            )
+            response_line = await asyncio.wait_for(reader.readline(), timeout=self._timeout_s)
             status_code = self._parse_status(response_line.decode().strip())
 
             headers_raw: list[bytes] = []
             while True:
-                line = await asyncio.wait_for(
-                    reader.readline(), timeout=self._timeout_s
-                )
+                line = await asyncio.wait_for(reader.readline(), timeout=self._timeout_s)
                 if not line or line.strip() == b"":
                     break
                 headers_raw.append(line)
@@ -152,9 +149,7 @@ class AsyncioHttpTransport:
             except Exception:
                 pass
 
-    def _build_headers(
-        self, method: str, path: str, body: bytes | None
-    ) -> list[str]:
+    def _build_headers(self, method: str, path: str, body: bytes | None) -> list[str]:
         headers = [
             f"{method} {path} HTTP/1.1",
             "Connection: close",
@@ -186,9 +181,7 @@ class OneCClient:
                 timeout_s=self._config.timeout_s,
             )
             if self._config.username:
-                self._transport.set_basic_auth(
-                    self._config.username, self._config.password
-                )
+                self._transport.set_basic_auth(self._config.username, self._config.password)
 
     @property
     def config(self) -> OneCConfig:
@@ -224,9 +217,7 @@ class OneCClient:
         if not self.enabled or not self._config.import_inventory or self._transport is None:
             return False
         try:
-            status_code, _ = await self._transport.post(
-                "/inventory", {"products": products}
-            )
+            status_code, _ = await self._transport.post("/inventory", {"products": products})
             if status_code == 200:
                 self._status.last_inventory_sync_at = _utc_now_iso()
                 self._status.last_error = None

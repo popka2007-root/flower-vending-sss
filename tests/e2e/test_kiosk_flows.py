@@ -121,6 +121,7 @@ class TestKioskFullPurchases:
             await harness.accept_cash(tx_id, correlation_id="e2e-cancel")
             await harness.insert_bill(100, correlation_id="e2e-cancel")
             from flower_vending.domain.commands.purchase_commands import CancelPurchase
+
             await harness.core.command_bus.dispatch(
                 CancelPurchase(correlation_id="e2e-cancel", transaction_id=tx_id)
             )
@@ -129,7 +130,6 @@ class TestKioskFullPurchases:
             assert tx.status.value == "cancelled"
         finally:
             await harness.stop()
-
 
     async def test_purchase_decrements_slot_quantity(self) -> None:
         harness = SimulationHarness.build(
@@ -161,6 +161,7 @@ class TestKioskFullPurchases:
 
             from flower_vending.domain.exceptions import ProductUnavailableError
             from flower_vending.domain.commands.purchase_commands import StartPurchase
+
             with pytest.raises(ProductUnavailableError):
                 await harness.core.command_bus.dispatch(
                     StartPurchase(

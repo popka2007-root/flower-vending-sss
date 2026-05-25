@@ -21,10 +21,7 @@ from flower_vending.ui.widgets.modern import ToggleSwitch
 
 def _make_section(title: str, parent: QWidget | None = None) -> tuple[QWidget, QVBoxLayout]:
     outer = QWidget(parent)
-    outer.setStyleSheet(
-        f"background: #FFFFFF; border-radius: {Radius.XL}px; "
-        f"border: none;"
-    )
+    outer.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;")
 
     outer_layout = QVBoxLayout(outer)
     outer_layout.setContentsMargins(0, 0, 0, 0)
@@ -32,7 +29,9 @@ def _make_section(title: str, parent: QWidget | None = None) -> tuple[QWidget, Q
 
     header = QWidget()
     header.setFixedHeight(48)
-    header.setStyleSheet(f"background: {BrandColors.GRAY_50}; border-radius: {Radius.XL}px {Radius.XL}px 0 0;")
+    header.setStyleSheet(
+        f"background: {BrandColors.GRAY_50}; border-radius: {Radius.XL}px {Radius.XL}px 0 0;"
+    )
     header_layout = QHBoxLayout(header)
     header_layout.setContentsMargins(20, 0, 20, 0)
     header_lbl = QLabel(title.upper())
@@ -97,9 +96,7 @@ class SettingsTab(QWidget):
 
         header = QHBoxLayout()
         title = QLabel("Настройки")
-        title.setStyleSheet(
-            f"font-size: 24px; font-weight: {Typography.WEIGHTS['bold']};"
-        )
+        title.setStyleSheet(f"font-size: 24px; font-weight: {Typography.WEIGHTS['bold']};")
         header.addWidget(title)
         header.addStretch(1)
 
@@ -148,18 +145,38 @@ class SettingsTab(QWidget):
         content_layout.addWidget(general_section)
 
         payment_section, payment_body = _make_section("Способы оплаты")
-        self._cash_toggle = _ToggleRow("Наличные", True, lambda v: self.action_requested.emit(f"tgl:cash:{1 if v else 0}"))
-        self._card_toggle = _ToggleRow("Банковская карта", False, lambda v: self.action_requested.emit(f"tgl:card:{1 if v else 0}"))
-        self._sbp_toggle = _ToggleRow("СБП (QR-код)", False, lambda v: self.action_requested.emit(f"tgl:sbp:{1 if v else 0}"))
+        self._cash_toggle = _ToggleRow(
+            "Наличные", True, lambda v: self.action_requested.emit(f"tgl:cash:{1 if v else 0}")
+        )
+        self._card_toggle = _ToggleRow(
+            "Банковская карта",
+            False,
+            lambda v: self.action_requested.emit(f"tgl:card:{1 if v else 0}"),
+        )
+        self._sbp_toggle = _ToggleRow(
+            "СБП (QR-код)", False, lambda v: self.action_requested.emit(f"tgl:sbp:{1 if v else 0}")
+        )
         payment_body.addWidget(self._cash_toggle)
         payment_body.addWidget(self._card_toggle)
         payment_body.addWidget(self._sbp_toggle)
         content_layout.addWidget(payment_section)
 
         inv_section, inv_body = _make_section("Склад и уведомления")
-        self._restock_toggle = _ToggleRow("Авто-пополнение", False, lambda v: self.action_requested.emit(f"tgl:restock:{1 if v else 0}"))
-        self._notify_order = _ToggleRow("Уведомлять о заказах", False, lambda v: self.action_requested.emit(f"tgl:notify_order:{1 if v else 0}"))
-        self._notify_low = _ToggleRow("Уведомлять о низком остатке", False, lambda v: self.action_requested.emit(f"tgl:notify_low:{1 if v else 0}"))
+        self._restock_toggle = _ToggleRow(
+            "Авто-пополнение",
+            False,
+            lambda v: self.action_requested.emit(f"tgl:restock:{1 if v else 0}"),
+        )
+        self._notify_order = _ToggleRow(
+            "Уведомлять о заказах",
+            False,
+            lambda v: self.action_requested.emit(f"tgl:notify_order:{1 if v else 0}"),
+        )
+        self._notify_low = _ToggleRow(
+            "Уведомлять о низком остатке",
+            False,
+            lambda v: self.action_requested.emit(f"tgl:notify_low:{1 if v else 0}"),
+        )
         inv_body.addWidget(self._restock_toggle)
         inv_body.addWidget(self._notify_order)
         inv_body.addWidget(self._notify_low)

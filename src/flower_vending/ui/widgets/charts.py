@@ -27,7 +27,8 @@ class BarChart(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
         if not self._data or w < 40 or h < 40:
-            p.end(); return
+            p.end()
+            return
 
         pad_left, pad_right, pad_top, pad_bottom = 40, 16, 16, 32
         chart_w = w - pad_left - pad_right
@@ -36,13 +37,17 @@ class BarChart(QWidget):
         max_val = max(self._data.values()) if self._data else 1
         keys = list(self._data.keys())
         n = len(keys)
-        if n == 0: p.end(); return
+        if n == 0:
+            p.end()
+            return
 
         bar_area = chart_w / n
         bar_w = bar_area * 0.55
         gap = bar_area * 0.45
 
-        font = QFont(); font.setPixelSize(10); p.setFont(font)
+        font = QFont()
+        font.setPixelSize(10)
+        p.setFont(font)
 
         for i in range(5):
             y = h - pad_bottom - int(chart_h * i / 4)
@@ -56,7 +61,8 @@ class BarChart(QWidget):
             bar_h = int(chart_h * val / max_val) if max_val > 0 else 0
             x = pad_left + int(bar_area * i + gap * 0.5)
             y = h - pad_bottom - bar_h
-            if bar_h < 2: bar_h = 2
+            if bar_h < 2:
+                bar_h = 2
 
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(self._bar_color)
@@ -87,14 +93,16 @@ class PieChart(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
         if not self._data or w < 40 or h < 40:
-            p.end(); return
+            p.end()
+            return
 
         cx, cy = w // 2, h // 2
         r = min(w, h) // 2 - 24
 
         total = sum(v for v, _ in self._data.values())
         if total == 0:
-            p.end(); return
+            p.end()
+            return
 
         start_angle = 90 * 16
         for i, (label, (val, color)) in enumerate(self._data.items()):
@@ -107,7 +115,9 @@ class PieChart(QWidget):
         p.setBrush(QColor("#FFFFFF"))
         p.drawEllipse(cx - r // 2, cy - r // 2, r, r)
 
-        font = QFont(); font.setPixelSize(10); p.setFont(font)
+        font = QFont()
+        font.setPixelSize(10)
+        p.setFont(font)
         legend_x = cx + r + 12
         legend_y = cy - len(self._data) * 14
         for i, (label, (val, color)) in enumerate(self._data.items()):
@@ -115,7 +125,7 @@ class PieChart(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor(color))
             p.drawEllipse(legend_x, yy, 8, 8)
-            p.setPen(self._text_color() if hasattr(self, '_text_color') else QColor("#9ca3af"))
+            p.setPen(self._text_color() if hasattr(self, "_text_color") else QColor("#9ca3af"))
             pct = int(val / total * 100) if total > 0 else 0
             p.drawText(legend_x + 14, yy + 10, f"{label} {pct}%")
 

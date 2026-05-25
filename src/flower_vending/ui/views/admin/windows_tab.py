@@ -26,9 +26,7 @@ class WindowsTab(QWidget):
         layout.setSpacing(24)
 
         title = QLabel("Окна выдачи")
-        title.setStyleSheet(
-            f"font-size: 24px; font-weight: {Typography.WEIGHTS['bold']};"
-        )
+        title.setStyleSheet(f"font-size: 24px; font-weight: {Typography.WEIGHTS['bold']};")
         layout.addWidget(title)
 
         desc = QLabel("Управление состоянием окон выдачи заказов")
@@ -41,16 +39,13 @@ class WindowsTab(QWidget):
 
         log_widget = QWidget()
         log_widget.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; "
-            f"border: none;"
+            f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;"
         )
         log_layout = QVBoxLayout(log_widget)
         log_layout.setContentsMargins(20, 16, 20, 16)
         log_layout.setSpacing(8)
         log_title = QLabel("Журнал активности")
-        log_title.setStyleSheet(
-            f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};"
-        )
+        log_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};")
         log_layout.addWidget(log_title)
 
         self._log_content = QVBoxLayout()

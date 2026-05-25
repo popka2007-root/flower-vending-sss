@@ -40,7 +40,9 @@ class ArduinoSerialTransport:
         self._read_timeout_s = read_timeout_s
         self._write_timeout_s = write_timeout_s
         self._cmd_timeout_s = cmd_timeout_s
-        self._serial_module = pyserial if serial_module is None and pyserial is not None else serial_module
+        self._serial_module = (
+            pyserial if serial_module is None and pyserial is not None else serial_module
+        )
         self._serial: Any | None = None
         self._lock = asyncio.Lock()
         self._reader: asyncio.StreamReader | None = None

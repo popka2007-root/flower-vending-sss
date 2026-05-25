@@ -34,6 +34,8 @@ def test_create_transaction_fails_if_active_not_terminal():
     [
         TransactionStatus.COMPLETED,
         TransactionStatus.CANCELLED,
+        TransactionStatus.FAULTED,
+        TransactionStatus.AMBIGUOUS,
         TransactionStatus.PICKUP_TIMED_OUT,
     ],
 )

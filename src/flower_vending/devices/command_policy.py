@@ -46,7 +46,9 @@ class Heartbeat(Protocol):
 CommandOperation = Callable[[], Awaitable[T]]
 ResultFaultClassifier = Callable[[T], str | None]
 ResultAmbiguityClassifier = Callable[[T], bool]
-StateReconciler = Callable[[T], PhysicalStateReconciliation | Awaitable[PhysicalStateReconciliation]]
+StateReconciler = Callable[
+    [T], PhysicalStateReconciliation | Awaitable[PhysicalStateReconciliation]
+]
 
 
 class DeviceCommandRunner:
@@ -100,11 +102,15 @@ class DeviceCommandRunner:
             try:
                 result = await self._run_once(operation, active_policy)
                 result_fault = classify_result_fault(result) if classify_result_fault else None
-                ambiguous = (is_result_ambiguous(result) if is_result_ambiguous else False)
+                ambiguous = is_result_ambiguous(result) if is_result_ambiguous else False
                 reconciliation = await self._reconcile(result, reconcile)
                 ambiguous = ambiguous or reconciliation.manual_review_required
 
-                if result_fault and active_policy.is_retryable(result_fault) and attempt < max_attempts:
+                if (
+                    result_fault
+                    and active_policy.is_retryable(result_fault)
+                    and attempt < max_attempts
+                ):
                     self._heartbeat(
                         state=DeviceOperationalState.DEGRADED,
                         command_name=command_name,
