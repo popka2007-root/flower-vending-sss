@@ -14,8 +14,15 @@ from flower_vending.domain.events import DomainEvent
 from flower_vending.domain.exceptions import ManualInterventionRequiredError
 from flower_vending.domain.value_objects import Amount, Currency, ProductId, SlotId
 from flower_vending.app.logging import ApplicationLogger
-from flower_vending.infrastructure.config.loader import build_device_settings_snapshot, load_machine_config
-from flower_vending.infrastructure.config.models import AppConfig, CatalogSeedItemConfig, SimulatorFaultConfig
+from flower_vending.infrastructure.config.loader import (
+    build_device_settings_snapshot,
+    load_machine_config,
+)
+from flower_vending.infrastructure.config.models import (
+    AppConfig,
+    CatalogSeedItemConfig,
+    SimulatorFaultConfig,
+)
 from flower_vending.infrastructure.logging.setup import (
     StructuredLoggerAdapter,
     close_logging,
@@ -128,7 +135,9 @@ class BootstrapReport:
     @property
     def hardware_warnings(self) -> tuple[str, ...]:
         return tuple(
-            message.message for message in self.messages if message.code == "hardware_confirmation_required"
+            message.message
+            for message in self.messages
+            if message.code == "hardware_confirmation_required"
         )
 
 
@@ -224,14 +233,18 @@ class SimulatorRuntimeEnvironment:
         await self._complete_startup_flow()
         self._persist_runtime_snapshot()
         self._started = True
-        self.logger.info("runtime_started", extra={"machine_state": self.core.fsm.current_state.value})
+        self.logger.info(
+            "runtime_started", extra={"machine_state": self.core.fsm.current_state.value}
+        )
 
     async def stop(self) -> None:
         if not self._started:
             self.repositories.database.close()
             close_logging(cast(StructuredLoggerAdapter, self.logger))
             return
-        self.logger.info("runtime_stopping", extra={"machine_state": self.core.fsm.current_state.value})
+        self.logger.info(
+            "runtime_stopping", extra={"machine_state": self.core.fsm.current_state.value}
+        )
         await self.core.stop_runtime()
         for device in reversed(self.devices.startup_order()):
             await device.stop()
@@ -296,12 +309,18 @@ class SimulatorRuntimeEnvironment:
                 unresolved_by_id[transaction_id] = transaction
         unresolved = tuple(unresolved_by_id.values())
         self.core.transaction_coordinator.restore_transactions(unresolved)
-        intent_plans = await self.core.recovery_manager.detect_unresolved_intents("startup-recovery")
+        intent_plans = await self.core.recovery_manager.detect_unresolved_intents(
+            "startup-recovery"
+        )
         if unresolved:
             active_transaction = unresolved[0]
-            self.core.machine_status_service.set_active_transaction(active_transaction.transaction_id.value)
+            self.core.machine_status_service.set_active_transaction(
+                active_transaction.transaction_id.value
+            )
             self.core.machine_status_service.block_sales("recovery_pending")
-            self.core.fsm.force_state(MachineState.RECOVERY_PENDING, "restored_unresolved_transaction")
+            self.core.fsm.force_state(
+                MachineState.RECOVERY_PENDING, "restored_unresolved_transaction"
+            )
             self.core.machine_status_service.set_machine_state(self.core.fsm.current_state)
             self.logger.warning(
                 "runtime_restored_unresolved_transactions",
@@ -390,7 +409,9 @@ class RuntimePersistenceProjector:
             self._repositories.operational_events.record_service_event(
                 event_type=event.event_type,
                 correlation_id=event.correlation_id,
-                operator_id=str(event.payload.get("operator_id")) if event.payload.get("operator_id") else None,
+                operator_id=str(event.payload.get("operator_id"))
+                if event.payload.get("operator_id")
+                else None,
                 payload=dict(event.payload),
             )
         if event.event_type in {"critical_temperature_detected"}:
@@ -416,8 +437,12 @@ class RuntimePersistenceProjector:
 
     def handle_transition(self, record: StateTransitionRecord) -> None:
         active_transaction = self._core.transaction_coordinator.active()
-        correlation_id = active_transaction.correlation_id.value if active_transaction is not None else None
-        transaction_id = active_transaction.transaction_id.value if active_transaction is not None else None
+        correlation_id = (
+            active_transaction.correlation_id.value if active_transaction is not None else None
+        )
+        transaction_id = (
+            active_transaction.transaction_id.value if active_transaction is not None else None
+        )
         set_log_context(
             correlation_id=correlation_id,
             transaction_id=transaction_id,
@@ -436,10 +461,18 @@ def discover_project_root(start: Path | None = None) -> Path:
     return discover_source_root(start)
 
 
-def validate_config_file(config_path: str | Path, *, prepare_directories: bool = False) -> tuple[AppConfig, str, BootstrapReport]:
+def validate_config_file(
+    config_path: str | Path, *, prepare_directories: bool = False
+) -> tuple[AppConfig, str, BootstrapReport]:
     path = Path(config_path).resolve()
-    project_root = bundle_root() if path.is_file() and path.is_relative_to(bundle_root()) else discover_project_root(path)
-    runtime_state_root = state_root() if path.is_file() and path.is_relative_to(bundle_root()) else project_root
+    project_root = (
+        bundle_root()
+        if path.is_file() and path.is_relative_to(bundle_root())
+        else discover_project_root(path)
+    )
+    runtime_state_root = (
+        state_root() if path.is_file() and path.is_relative_to(bundle_root()) else project_root
+    )
     yaml_text = path.read_text(encoding="utf-8")
     config = load_machine_config(path)
     messages: list[BootstrapMessage] = []
@@ -465,7 +498,10 @@ def validate_config_file(config_path: str | Path, *, prepare_directories: bool =
                     message=f"Unknown simulator scenario '{name}'.",
                 )
             )
-    if config.simulator.startup_scenario and config.simulator.startup_scenario not in SCENARIO_REGISTRY:
+    if (
+        config.simulator.startup_scenario
+        and config.simulator.startup_scenario not in SCENARIO_REGISTRY
+    ):
         messages.append(
             BootstrapMessage(
                 severity="error",
@@ -513,7 +549,9 @@ def validate_config_file(config_path: str | Path, *, prepare_directories: bool =
             )
         )
 
-    if set(config.simulator.quick_insert_bill_denominations_minor) - set(config.simulator.accepted_bill_denominations_minor):
+    if set(config.simulator.quick_insert_bill_denominations_minor) - set(
+        config.simulator.accepted_bill_denominations_minor
+    ):
         messages.append(
             BootstrapMessage(
                 severity="warning",
@@ -523,13 +561,17 @@ def validate_config_file(config_path: str | Path, *, prepare_directories: bool =
         )
 
     platform_profile = build_platform_profile(config.platform)
-    return config, yaml_text, BootstrapReport(
-        config_path=path,
-        project_root=project_root,
-        state_root=runtime_state_root,
-        created_directories=tuple(created_directories),
-        messages=tuple(messages),
-        platform_profile=platform_profile,
+    return (
+        config,
+        yaml_text,
+        BootstrapReport(
+            config_path=path,
+            project_root=project_root,
+            state_root=runtime_state_root,
+            created_directories=tuple(created_directories),
+            messages=tuple(messages),
+            platform_profile=platform_profile,
+        ),
     )
 
 
@@ -666,7 +708,9 @@ async def build_simulator_environment(
     config_path: str | Path,
     prepare_directories: bool = True,
 ) -> SimulatorRuntimeEnvironment:
-    config, yaml_text, report = validate_config_file(config_path, prepare_directories=prepare_directories)
+    config, yaml_text, report = validate_config_file(
+        config_path, prepare_directories=prepare_directories
+    )
     if not report.valid:
         errors = [message.message for message in report.messages if message.severity == "error"]
         raise ValueError("; ".join(errors))
@@ -696,7 +740,11 @@ async def build_simulator_environment(
         operational_events=OperationalEventRepository(database),
     )
     logger = configure_logging(
-        config.logging.model_copy(update={"directory": str(resolve_runtime_path(runtime_state_root, config.logging.directory))})
+        config.logging.model_copy(
+            update={
+                "directory": str(resolve_runtime_path(runtime_state_root, config.logging.directory))
+            }
+        )
     )
     if config.runtime.persist_applied_config:
         repositories.applied_config.save_snapshot(
@@ -821,7 +869,10 @@ def _should_replace_demo_catalog(existing_products: tuple[Product, ...]) -> bool
     existing_ids = {product.product_id.value for product in existing_products}
     if existing_ids == legacy_ids:
         return True
-    if any(product.display_name in {"Red Roses", "White Tulips", "Spring Bouquet"} for product in existing_products):
+    if any(
+        product.display_name in {"Red Roses", "White Tulips", "Spring Bouquet"}
+        for product in existing_products
+    ):
         return True
     return False
 
@@ -983,15 +1034,19 @@ def _resolve_port(raw_port: str) -> str:
 def _build_production_devices(config: AppConfig) -> ProductionDevices:
     serial = config.devices.bill_validator.serial
     bv_port = _resolve_port(serial.port) if serial is not None else ""
-    bv_settings = SerialTransportSettings(
-        port=bv_port,
-        baudrate=serial.baudrate if serial else 9600,
-        bytesize=serial.bytesize if serial else 8,
-        parity=serial.parity if serial else "N",
-        stopbits=serial.stopbits if serial else 1,
-        read_timeout_s=serial.read_timeout_s if serial else 0.2,
-        write_timeout_s=serial.write_timeout_s if serial else 0.2,
-    ) if serial else None
+    bv_settings = (
+        SerialTransportSettings(
+            port=bv_port,
+            baudrate=serial.baudrate if serial else 9600,
+            bytesize=serial.bytesize if serial else 8,
+            parity=serial.parity if serial else "N",
+            stopbits=serial.stopbits if serial else 1,
+            read_timeout_s=serial.read_timeout_s if serial else 0.2,
+            write_timeout_s=serial.write_timeout_s if serial else 0.2,
+        )
+        if serial
+        else None
+    )
 
     bv_config = DBV300SDValidatorConfig(
         device_name=config.devices.bill_validator.device_name,
@@ -1001,7 +1056,9 @@ def _build_production_devices(config: AppConfig) -> ProductionDevices:
         poll_interval_s=config.devices.bill_validator.poll_interval_s,
         startup_disable_acceptance=config.devices.bill_validator.startup_disable_acceptance,
         fallback_disable_on_fault=config.devices.bill_validator.fallback_disable_on_fault,
-        accepted_denominations_minor=tuple(config.devices.bill_validator.accepted_denominations_minor),
+        accepted_denominations_minor=tuple(
+            config.devices.bill_validator.accepted_denominations_minor
+        ),
         command_policy=config.devices.bill_validator.policy.to_runtime_policy(),
     )
     validator = build_dbv300sd_validator(bv_config)
@@ -1052,7 +1109,9 @@ def _build_production_devices(config: AppConfig) -> ProductionDevices:
     )
 
 
-def _apply_initial_faults(faults: tuple[SimulatorFaultConfig, ...], devices: SimulatorDevices) -> None:
+def _apply_initial_faults(
+    faults: tuple[SimulatorFaultConfig, ...], devices: SimulatorDevices
+) -> None:
     target_map = {
         "validator": devices.validator,
         "change_dispenser": devices.change_dispenser,

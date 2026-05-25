@@ -72,7 +72,14 @@ class _BarChart(QWidget):
             val_text = str(int(max_val * i // 3))
             painter.setPen(self._text_color)
             painter.setFont(self._font)
-            painter.drawText(0, int(y - 8), int(margin_l - 8), 16, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, val_text)
+            painter.drawText(
+                0,
+                int(y - 8),
+                int(margin_l - 8),
+                16,
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                val_text,
+            )
             painter.setPen(QPen(self._grid_color, 1))
 
         # Bars
@@ -90,7 +97,14 @@ class _BarChart(QWidget):
             painter.setPen(self._text_color)
             painter.setFont(self._font)
             l_text = label
-            painter.drawText(int(bar_x - 4), int(margin_t + chart_h + 4), int(bar_w + 8), 24, Qt.AlignmentFlag.AlignCenter, l_text)
+            painter.drawText(
+                int(bar_x - 4),
+                int(margin_t + chart_h + 4),
+                int(bar_w + 8),
+                24,
+                Qt.AlignmentFlag.AlignCenter,
+                l_text,
+            )
 
         painter.end()
 
@@ -161,15 +175,23 @@ class _PieChart(QWidget):
             painter.setFont(self._bold)
             label_map = {"cash": "Наличные", "card": "Карта", "sbp": "СБП"}
             display = label_map.get(label, label)
-            painter.drawText(lx + 20, ly - 2, w - lx - 16, 16, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-                             f"{display}  {pct:.0f}%")
+            painter.drawText(
+                lx + 20,
+                ly - 2,
+                w - lx - 16,
+                16,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                f"{display}  {pct:.0f}%",
+            )
             ly += 36
 
         painter.end()
 
 
 class _ProductBar(QWidget):
-    def __init__(self, rank: int, name: str, revenue: str, pct: float, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, rank: int, name: str, revenue: str, pct: float, parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self.setFixedHeight(40)
         layout = QHBoxLayout(self)
@@ -178,12 +200,16 @@ class _ProductBar(QWidget):
 
         rank_lbl = QLabel(f"{rank}")
         rank_lbl.setFixedWidth(24)
-        rank_lbl.setStyleSheet(f"font-size: 13px; font-weight: {Typography.WEIGHTS['bold']}; color: {BrandColors.GRAY_500};")
+        rank_lbl.setStyleSheet(
+            f"font-size: 13px; font-weight: {Typography.WEIGHTS['bold']}; color: {BrandColors.GRAY_500};"
+        )
         rank_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(rank_lbl)
 
         name_lbl = QLabel(name)
-        name_lbl.setStyleSheet(f"font-size: 13px; font-weight: {Typography.WEIGHTS['medium']}; color: #111827;")
+        name_lbl.setStyleSheet(
+            f"font-size: 13px; font-weight: {Typography.WEIGHTS['medium']}; color: #111827;"
+        )
         layout.addWidget(name_lbl, 1)
 
         bar_wrap = QWidget()
@@ -194,14 +220,18 @@ class _ProductBar(QWidget):
         fill = QWidget()
         fill.setFixedWidth(int(160 * pct / 100))
         fill.setFixedHeight(8)
-        fill.setStyleSheet(f"background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #EC4899, stop:1 #9333EA); border-radius: 4px;")
+        fill.setStyleSheet(
+            f"background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #EC4899, stop:1 #9333EA); border-radius: 4px;"
+        )
         bar_layout.addWidget(fill)
         bar_layout.addStretch(1)
         layout.addWidget(bar_wrap)
 
         rev_lbl = QLabel(revenue)
         rev_lbl.setFixedWidth(80)
-        rev_lbl.setStyleSheet(f"font-size: 13px; font-weight: {Typography.WEIGHTS['semibold']}; color: #111827;")
+        rev_lbl.setStyleSheet(
+            f"font-size: 13px; font-weight: {Typography.WEIGHTS['semibold']}; color: #111827;"
+        )
         rev_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(rev_lbl)
 
@@ -217,9 +247,7 @@ class AnalyticsTab(QWidget):
         layout.setSpacing(24)
 
         title = QLabel("Аналитика")
-        title.setStyleSheet(
-            f"font-size: 24px; font-weight: {Typography.WEIGHTS['bold']};"
-        )
+        title.setStyleSheet(f"font-size: 24px; font-weight: {Typography.WEIGHTS['bold']};")
         layout.addWidget(title)
 
         kpi_grid = QHBoxLayout()
@@ -228,7 +256,12 @@ class AnalyticsTab(QWidget):
         self._kpi_pending = KpiCard("В обработке", "0", IconName.CLOCK, BrandColors.KPI_YELLOW)
         self._kpi_completed = KpiCard("Выполнено", "0", IconName.CHECK_CIRCLE, BrandColors.KPI_BLUE)
         self._kpi_cancelled = KpiCard("Отменено", "0", IconName.X_CIRCLE, BrandColors.KPI_RED)
-        for card in [self._kpi_revenue, self._kpi_pending, self._kpi_completed, self._kpi_cancelled]:
+        for card in [
+            self._kpi_revenue,
+            self._kpi_pending,
+            self._kpi_completed,
+            self._kpi_cancelled,
+        ]:
             kpi_grid.addWidget(card)
         layout.addLayout(kpi_grid)
 
@@ -236,32 +269,24 @@ class AnalyticsTab(QWidget):
         charts_row.setSpacing(20)
 
         bar_card = QWidget()
-        bar_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;"
-        )
+        bar_card.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;")
         bar_card.setMinimumHeight(300)
         bar_layout = QVBoxLayout(bar_card)
         bar_layout.setContentsMargins(20, 16, 20, 16)
         bar_title = QLabel("Продажи по дням (неделя)")
-        bar_title.setStyleSheet(
-            f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};"
-        )
+        bar_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};")
         bar_layout.addWidget(bar_title)
         self._bar_chart = _BarChart()
         bar_layout.addWidget(self._bar_chart, 1)
         charts_row.addWidget(bar_card, 2)
 
         pie_card = QWidget()
-        pie_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;"
-        )
+        pie_card.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;")
         pie_card.setMinimumHeight(300)
         pie_layout = QVBoxLayout(pie_card)
         pie_layout.setContentsMargins(20, 16, 20, 16)
         pie_title = QLabel("Способы оплаты")
-        pie_title.setStyleSheet(
-            f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};"
-        )
+        pie_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};")
         pie_layout.addWidget(pie_title)
         self._pie_chart = _PieChart()
         pie_layout.addWidget(self._pie_chart, 1)
@@ -270,15 +295,11 @@ class AnalyticsTab(QWidget):
         layout.addLayout(charts_row)
 
         top_card = QWidget()
-        top_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;"
-        )
+        top_card.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;")
         top_layout = QVBoxLayout(top_card)
         top_layout.setContentsMargins(20, 16, 20, 16)
         top_title = QLabel("Топ товаров")
-        top_title.setStyleSheet(
-            f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};"
-        )
+        top_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};")
         top_layout.addWidget(top_title)
         self._top_list = QVBoxLayout()
         top_layout.addLayout(self._top_list)
@@ -298,8 +319,8 @@ class AnalyticsTab(QWidget):
         self._render_top_products(model.top_products)
 
     def _render_top_products(self, top_products: tuple[tuple[str, str, float], ...]) -> None:
-        while self._top_list.count():
-            item = self._top_list.takeAt(0)
+        for i in reversed(range(self._top_list.count())):
+            item = self._top_list.takeAt(i)
             if item and item.widget():
                 item.widget().deleteLater()
 

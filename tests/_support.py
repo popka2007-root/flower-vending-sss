@@ -73,7 +73,9 @@ class TempSimulatorRuntime:
         )
 
 
-def make_temp_simulator_runtime(tmp: Path, *, sqlite_name: str = "runtime.db") -> TempSimulatorRuntime:
+def make_temp_simulator_runtime(
+    tmp: Path, *, sqlite_name: str = "runtime.db"
+) -> TempSimulatorRuntime:
     payload = yaml.safe_load(
         (ROOT / "config" / "examples" / "machine.simulator.yaml").read_text(encoding="utf-8")
     )

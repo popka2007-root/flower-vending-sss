@@ -11,6 +11,7 @@ from flower_vending.app.journal import ApplicationJournal, JournalOutcome, NoopA
 from flower_vending.app.orchestrators.transaction_coordinator import TransactionCoordinator
 from flower_vending.app.services.machine_status_service import MachineStatusService
 from flower_vending.devices.interfaces import WindowController
+from flower_vending.app.orchestrators.journaling_mixin import JournalingMixin
 from flower_vending.domain.entities import Transaction, TransactionStatus
 from flower_vending.domain.events import DomainEvent
 from flower_vending.domain.events.machine_events import machine_event

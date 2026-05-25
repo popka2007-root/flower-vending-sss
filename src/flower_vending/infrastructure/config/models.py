@@ -208,7 +208,9 @@ class CatalogSeedItemConfig(StrictModel):
     temperature_profile: str = "cooled"
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @field_validator("product_id", "slot_id", "name", "display_name", "category", "temperature_profile")
+    @field_validator(
+        "product_id", "slot_id", "name", "display_name", "category", "temperature_profile"
+    )
     @classmethod
     def _seed_fields_not_blank(cls, value: str) -> str:
         normalized = value.strip()
@@ -360,6 +362,7 @@ class BillValidatorConfig(StrictModel):
         if self.transport_kind is DBV300TransportKind.SERIAL and self.serial is None:
             raise ValueError("serial settings are required for serial transport")
         return self
+
 
 class GenericDeviceConfig(StrictModel):
     enabled: bool = True

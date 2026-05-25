@@ -176,8 +176,8 @@ class PaymentScreenWidget(QWidget):
         if is_cash:
             self._update_progress(model)
 
-        while self._sim_layout.count():
-            item = self._sim_layout.takeAt(0)
+        for i in reversed(range(self._sim_layout.count())):
+            item = self._sim_layout.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
 
@@ -192,14 +192,28 @@ class PaymentScreenWidget(QWidget):
                 f"background: #FFFFFF; color: {BrandColors.PURPLE_600}; }}"
                 f"QPushButton:hover {{ background: {BrandColors.PURPLE_600}; color: #FFFFFF; }}"
             )
-            btn.clicked.connect(lambda checked, a=action.action_id: self.simulator_action_requested.emit(a))
+            btn.clicked.connect(
+                lambda checked, a=action.action_id: self.simulator_action_requested.emit(a)
+            )
             self._sim_layout.addWidget(btn)
         self._sim_layout.addStretch(1)
 
     def _update_progress(self, model: PaymentScreenViewModel) -> None:
         try:
-            price = int(model.price_text.replace('\u202f', '').replace('\u00a0', '').replace(' ', '').replace('₽', '').strip())
-            accepted = int(model.accepted_text.replace('\u202f', '').replace('\u00a0', '').replace(' ', '').replace('₽', '').strip())
+            price = int(
+                model.price_text.replace("\u202f", "")
+                .replace("\u00a0", "")
+                .replace(" ", "")
+                .replace("₽", "")
+                .strip()
+            )
+            accepted = int(
+                model.accepted_text.replace("\u202f", "")
+                .replace("\u00a0", "")
+                .replace(" ", "")
+                .replace("₽", "")
+                .strip()
+            )
         except (ValueError, AttributeError):
             return
         if price <= 0:

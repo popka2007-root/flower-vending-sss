@@ -87,8 +87,8 @@ class CatalogPresenter:
             currency_code=entry.currency_code,
             availability_text=self._availability_text(entry),
             enabled=entry.available,
-            short_description=self._metadata_text(entry.metadata, "short_description") or (
-                self._metadata_text(entry.metadata, "description")),
+            short_description=self._metadata_text(entry.metadata, "short_description")
+            or (self._metadata_text(entry.metadata, "description")),
             image_path=self._image_path(entry.metadata),
             freshness_note=self._metadata_text(entry.metadata, "freshness_note"),
             size_label=self._metadata_text(entry.metadata, "size_label"),
@@ -174,8 +174,10 @@ class CatalogPresenter:
         actions: list[ActionButtonViewModel] = []
         for method_id, enabled in pm.items():
             if enabled and method_id in labels:
-                actions.append(ActionButtonViewModel(
-                    action_id=f"pay_{method_id}",
-                    label=labels[method_id],
-                ))
+                actions.append(
+                    ActionButtonViewModel(
+                        action_id=f"pay_{method_id}",
+                        label=labels[method_id],
+                    )
+                )
         return tuple(actions)

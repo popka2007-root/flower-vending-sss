@@ -26,11 +26,14 @@ class InventoryService:
 
     def list_catalog(self) -> tuple[tuple[Product, Slot], ...]:
         catalog: list[tuple[Product, Slot]] = []
-        for slot in self.list_slots():
+        for slot in self._slots.values():
             product = self._products.get(slot.product_id.value)
             if product is None:
                 continue
             catalog.append((product, slot))
+
+        # Sort by slot_id to ensure predictable ordering
+        catalog.sort(key=lambda item: item[1].slot_id.value)
         return tuple(catalog)
 
     def get_product(self, product_id: str) -> Product:
@@ -81,7 +84,9 @@ class InventoryService:
         if product_id not in self._products:
             return False
         del self._products[product_id]
-        slots_to_remove = [sid for sid, s in self._slots.items() if s.product_id.value == product_id]
+        slots_to_remove = [
+            sid for sid, s in self._slots.items() if s.product_id.value == product_id
+        ]
         for sid in slots_to_remove:
             del self._slots[sid]
         return True

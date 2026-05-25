@@ -71,6 +71,7 @@ class BillRejectedError(PaymentError):
 
 class ValidatorUnavailableError(PaymentError):
     """Raised when the bill validator cannot be used safely."""
+
     def __init__(self, message: str = "") -> None:
         super().__init__(
             message,
@@ -80,6 +81,7 @@ class ValidatorUnavailableError(PaymentError):
 
 class ChangeUnavailableError(PaymentError):
     """Raised when safe change cannot be reserved or dispensed."""
+
     def __init__(self, message: str = "") -> None:
         super().__init__(
             message,
@@ -141,8 +143,22 @@ class JournalConsistencyError(RecoveryError):
 
 class ManualInterventionRequiredError(RecoveryError):
     """Raised when operator review is required to proceed."""
+
     def __init__(self, message: str = "") -> None:
         super().__init__(
             message,
             user_message="Автомат на обслуживании. Пожалуйста, обратитесь к администратору. Приносим извинения!",
+        )
+
+
+class TransactionRecoveryError(RecoveryError):
+    """Raised when a restored active transaction is missing from the transaction set."""
+
+
+class TerminalLockedError(FlowerVendingError):
+    """Raised when the terminal is locked due to a faulted or ambiguous transaction state."""
+    def __init__(self, message: str = "") -> None:
+        super().__init__(
+            message,
+            user_message="Автомат временно заблокирован из-за технической ошибки. Пожалуйста, обратитесь к администратору.",
         )

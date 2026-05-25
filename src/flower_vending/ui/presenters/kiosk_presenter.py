@@ -145,13 +145,18 @@ class KioskPresenter:
             return await self._show_error("Корзина пуста", "Добавьте товары в корзину.")
         product_id, slot_id = items[0]
         entry = self._facade.get_catalog_entry(product_id, slot_id)
-        self._session.select_product(product_id=entry.product_id, slot_id=entry.slot_id,
-                                     product_name=entry.display_name, price_minor_units=total_minor,
-                                     currency_code=entry.currency_code)
+        self._session.select_product(
+            product_id=entry.product_id,
+            slot_id=entry.slot_id,
+            product_name=entry.display_name,
+            price_minor_units=total_minor,
+            currency_code=entry.currency_code,
+        )
         correlation_id = self._facade.new_correlation_id()
         try:
             transaction_id = await self._facade.start_cash_checkout(
-                product_id=product_id, slot_id=slot_id, correlation_id=correlation_id)
+                product_id=product_id, slot_id=slot_id, correlation_id=correlation_id
+            )
         except ChangeUnavailableError as exc:
             self._session.last_warning_message = exc.user_message or str(exc)
             self._navigation.go_to(ScreenId.NO_CHANGE)
@@ -172,7 +177,9 @@ class KioskPresenter:
                 correlation_id=correlation_id,
             )
         except FlowerVendingError as exc:
-            return await self._show_error("Не удалось отменить покупку", exc.user_message or str(exc))
+            return await self._show_error(
+                "Не удалось отменить покупку", exc.user_message or str(exc)
+            )
         return await self.show_home()
 
     async def confirm_pickup(self) -> ScreenRender:
@@ -185,7 +192,9 @@ class KioskPresenter:
                 correlation_id=correlation_id,
             )
         except FlowerVendingError as exc:
-            return await self._show_error("Не удалось завершить выдачу", exc.user_message or str(exc))
+            return await self._show_error(
+                "Не удалось завершить выдачу", exc.user_message or str(exc)
+            )
         return await self.show_home()
 
     async def show_pin_screen(self) -> ScreenRender:
@@ -204,9 +213,13 @@ class KioskPresenter:
         self._navigation.go_to(screen)
         return await self._emit_current_render()
 
-    async def open_service_mode(self, operator_id: str = "technician", pin: str | None = None) -> ScreenRender:
+    async def open_service_mode(
+        self, operator_id: str = "technician", pin: str | None = None
+    ) -> ScreenRender:
         if pin is None:
-            return await self._show_error("PIN не введён", "Введите PIN-код для доступа в сервисный режим")
+            return await self._show_error(
+                "PIN не введён", "Введите PIN-код для доступа в сервисный режим"
+            )
         logger.info("open_service_mode_requested", extra={"operator_id": operator_id})
         correlation_id = self._facade.new_correlation_id()
         try:
@@ -220,7 +233,9 @@ class KioskPresenter:
         except ValueError:
             return await self._show_error("Неверный PIN", "Попробуйте снова")
         except FlowerVendingError as exc:
-            return await self._show_error("Не удалось открыть сервисный режим", exc.user_message or str(exc))
+            return await self._show_error(
+                "Не удалось открыть сервисный режим", exc.user_message or str(exc)
+            )
         self._navigation.go_to(ScreenId.SERVICE)
         return await self._emit_current_render()
 
@@ -232,7 +247,9 @@ class KioskPresenter:
                 operator_id=operator_id,
             )
         except FlowerVendingError as exc:
-            return await self._show_error("Не удалось выйти из сервиса", exc.user_message or str(exc))
+            return await self._show_error(
+                "Не удалось выйти из сервиса", exc.user_message or str(exc)
+            )
         return await self.show_home()
 
     async def show_diagnostics(self) -> ScreenRender:
@@ -251,7 +268,9 @@ class KioskPresenter:
             self._navigation.go_to(ScreenId.RESTRICTED)
             return await self._emit_current_render()
         except FlowerVendingError as exc:
-            return await self._show_error("Восстановление не выполнено", exc.user_message or str(exc))
+            return await self._show_error(
+                "Восстановление не выполнено", exc.user_message or str(exc)
+            )
         self._session.last_warning_message = "Выполняется безопасное восстановление транзакции."
         self._navigation.go_to(ScreenId.RESTRICTED)
         return await self._emit_current_render()
@@ -289,8 +308,10 @@ class KioskPresenter:
         product_id, enabled = parsed
         cid = self._facade.new_correlation_id()
         await self._facade.toggle_product(
-            product_id=product_id, enabled=enabled,
-            operator_id="technician", correlation_id=cid,
+            product_id=product_id,
+            enabled=enabled,
+            operator_id="technician",
+            correlation_id=cid,
         )
         return await self._emit_current_render()
 
@@ -326,13 +347,17 @@ class KioskPresenter:
         if action_id == "lock_purchase":
             cid = self._facade.new_correlation_id()
             await self._facade.lock_purchase_button(
-                operator_id="technician", locked=True, correlation_id=cid,
+                operator_id="technician",
+                locked=True,
+                correlation_id=cid,
             )
             return await self._emit_current_render()
         if action_id == "unlock_purchase":
             cid = self._facade.new_correlation_id()
             await self._facade.lock_purchase_button(
-                operator_id="technician", locked=False, correlation_id=cid,
+                operator_id="technician",
+                locked=False,
+                correlation_id=cid,
             )
             return await self._emit_current_render()
         if action_id.startswith("set_payment_methods:"):
@@ -355,6 +380,7 @@ class KioskPresenter:
         if action_id == "print_test":
             try:
                 from flower_vending.ui.sounds import play_success
+
                 play_success()
             except Exception:
                 pass
@@ -398,8 +424,10 @@ class KioskPresenter:
                 enable = parts[2] == "1"
                 cid = self._facade.new_correlation_id()
                 await self._facade.toggle_product(
-                    product_id=pid, enabled=enable,
-                    operator_id="technician", correlation_id=cid,
+                    product_id=pid,
+                    enabled=enable,
+                    operator_id="technician",
+                    correlation_id=cid,
                 )
             return await self._emit_current_render()
         if action_id.startswith("admin_stock:"):
@@ -424,6 +452,7 @@ class KioskPresenter:
             if len(parts) == 4:
                 name, price_str, stock_str, cat = parts
                 import uuid
+
                 pid = f"prod-{uuid.uuid4().hex[:8]}"
                 self._facade.add_product(pid, name, int(price_str), cat, int(stock_str))
             return await self._emit_current_render()
@@ -474,8 +503,12 @@ class KioskPresenter:
             sc_map = {
                 "Тест оплаты": ("inject_validator_unavailable", "inject_bill_jam"),
                 "Тест выдачи": ("inject_motor_fault", "inject_window_fault"),
-                "Полный recovery": ("close_service_door", "restore_temperature_nominal",
-                                    "restore_inventory_match", "clear_simulator_faults"),
+                "Полный recovery": (
+                    "close_service_door",
+                    "restore_temperature_nominal",
+                    "restore_inventory_match",
+                    "clear_simulator_faults",
+                ),
             }
             actions = sc_map.get(name, ())
             for a in actions:
@@ -483,7 +516,8 @@ class KioskPresenter:
                     try:
                         cid = self._facade.new_correlation_id()
                         await self._facade.execute_simulator_action(action_id=a, correlation_id=cid)
-                    except Exception: pass
+                    except Exception:
+                        pass
             return await self._emit_current_render()
         handler = handlers.get(action_id)
         if handler is None:
@@ -492,16 +526,25 @@ class KioskPresenter:
 
     async def handle_domain_event(self, event: DomainEvent) -> None:
         self._touch()
-        logger.debug("domain_event_received", extra={
-            "event_type": event.event_type,
-            "correlation_id": event.correlation_id,
-        })
+        logger.debug(
+            "domain_event_received",
+            extra={
+                "event_type": event.event_type,
+                "correlation_id": event.correlation_id,
+            },
+        )
         if event.event_type == "cash_amount_updated":
-            self._session.accepted_minor_units = self._safe_int(event.payload.get("accepted_minor_units", 0))
+            self._session.accepted_minor_units = self._safe_int(
+                event.payload.get("accepted_minor_units", 0)
+            )
             self._navigation.go_to(ScreenId.PAYMENT)
         elif event.event_type == "payment_confirmed":
-            self._session.accepted_minor_units = self._safe_int(event.payload.get("accepted_minor_units", 0))
-            self._session.change_due_minor_units = self._safe_int(event.payload.get("change_due_minor_units", 0))
+            self._session.accepted_minor_units = self._safe_int(
+                event.payload.get("accepted_minor_units", 0)
+            )
+            self._session.change_due_minor_units = self._safe_int(
+                event.payload.get("change_due_minor_units", 0)
+            )
             self._navigation.go_to(ScreenId.DISPENSING)
         elif event.event_type in {"product_dispense_requested", "product_dispensed"}:
             self._navigation.go_to(ScreenId.DISPENSING)
@@ -519,7 +562,9 @@ class KioskPresenter:
             self._navigation.reset(ScreenId.HOME)
             return
         elif event.event_type == "refund_requested":
-            self._session.refund_minor_units = self._safe_int(event.payload.get("refund_minor_units", 0))
+            self._session.refund_minor_units = self._safe_int(
+                event.payload.get("refund_minor_units", 0)
+            )
             self._navigation.go_to(ScreenId.REFUND)
         elif event.event_type == "refund_dispensed":
             self._session.refund_minor_units = 0
@@ -588,9 +633,10 @@ class KioskPresenter:
         self._session.sale_blockers = set(machine.sale_blockers)
         screen_id = self._navigation.current_screen
 
-        if (machine.machine_state in {"RECOVERY_PENDING", "MANUAL_REVIEW"} or bool(
-            set(machine.sale_blockers) & {"recovery_pending", "manual_review_required"}
-        )) and screen_id not in {
+        if (
+            machine.machine_state in {"RECOVERY_PENDING", "MANUAL_REVIEW"}
+            or bool(set(machine.sale_blockers) & {"recovery_pending", "manual_review_required"})
+        ) and screen_id not in {
             ScreenId.SERVICE,
             ScreenId.DIAGNOSTICS,
             ScreenId.ERROR,
@@ -698,9 +744,8 @@ class KioskPresenter:
             return ScreenRender(
                 screen_id,
                 self._status_presenter.present_manual_review(
-                    reason=", ".join(
-                        detail for detail in self._session.restricted_details
-                    ) or "manual_review_required",
+                    reason=", ".join(detail for detail in self._session.restricted_details)
+                    or "manual_review_required",
                     transaction_id=self._session.active_transaction_id,
                 ),
             )
@@ -761,36 +806,33 @@ class KioskPresenter:
             return ScreenRender(screen_id, None)
 
         if screen_id is ScreenId.ADMIN:
-            return ScreenRender(ScreenId.ADMIN_ORDERS,
-                               self._admin_presenter.present_orders())
+            return ScreenRender(ScreenId.ADMIN_ORDERS, self._admin_presenter.present_orders())
 
         if screen_id is ScreenId.ADMIN_ORDERS:
-            return ScreenRender(screen_id,
-                               self._admin_presenter.present_orders(
-                                   active_filter=getattr(self._session, '_admin_filter', 'all')))
+            return ScreenRender(
+                screen_id,
+                self._admin_presenter.present_orders(
+                    active_filter=getattr(self._session, "_admin_filter", "all")
+                ),
+            )
 
         if screen_id is ScreenId.ADMIN_ANALYTICS:
-            return ScreenRender(screen_id,
-                               self._admin_presenter.present_analytics())
+            return ScreenRender(screen_id, self._admin_presenter.present_analytics())
 
         if screen_id is ScreenId.ADMIN_CATALOG:
-            return ScreenRender(screen_id,
-                               self._admin_presenter.present_catalog())
+            return ScreenRender(screen_id, self._admin_presenter.present_catalog())
 
         if screen_id is ScreenId.ADMIN_WINDOWS:
-            return ScreenRender(screen_id,
-                               self._admin_presenter.present_windows())
+            return ScreenRender(screen_id, self._admin_presenter.present_windows())
 
         if screen_id is ScreenId.ADMIN_SETTINGS:
-            return ScreenRender(screen_id,
-                               self._admin_presenter.present_settings())
+            return ScreenRender(screen_id, self._admin_presenter.present_settings())
 
         return ScreenRender(
             ScreenId.ERROR,
             self._status_presenter.present_error(
                 title=self._session.last_error_title or "Ошибка автомата",
-                message=self._session.last_error_message
-                or "Произошла непредвиденная ошибка.",
+                message=self._session.last_error_message or "Произошла непредвиденная ошибка.",
             ),
         )
 

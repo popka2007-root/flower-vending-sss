@@ -126,7 +126,9 @@ def _seed_recovery_pending(tx: Transaction) -> None:
     tx.recovery_status = RecoveryStatus.PENDING
 
 
-def _assert_manual_review(env: SimulatorRuntimeEnvironment, tid: str, expected_intents: int) -> None:
+def _assert_manual_review(
+    env: SimulatorRuntimeEnvironment, tid: str, expected_intents: int
+) -> None:
     tx = env.core.transaction_coordinator.require(tid)
     assert tx.status == TransactionStatus.AMBIGUOUS
     assert tx.recovery_status == RecoveryStatus.MANUAL_REVIEW
@@ -149,9 +151,7 @@ class CrashRecoveryTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(scenario=label):
                 await self._run_restart_test(seed, extra)
 
-    async def _run_restart_test(
-        self, seed: CrashSeeder, extra: RestartAssertion | None
-    ) -> None:
+    async def _run_restart_test(self, seed: CrashSeeder, extra: RestartAssertion | None) -> None:
         with workspace_temp_dir(prefix="restart-crash-") as tmp:
             runtime = make_temp_simulator_runtime(tmp)
             env = await runtime.build()
@@ -193,7 +193,10 @@ async def _start_transaction(env: SimulatorRuntimeEnvironment) -> str:
 def _assert_recovery_state(env: SimulatorRuntimeEnvironment, tid: str) -> None:
     report = env.diagnostics_report()
     machine = report["machine"]
-    assert machine["machine_state"] in {MachineState.RECOVERY_PENDING.value, MachineState.OUT_OF_SERVICE.value}
+    assert machine["machine_state"] in {
+        MachineState.RECOVERY_PENDING.value,
+        MachineState.OUT_OF_SERVICE.value,
+    }
     assert "recovery_pending" in machine["sale_blockers"]
     assert machine["active_transaction_id"] == tid
     assert tid in report["unresolved_transaction_ids"]

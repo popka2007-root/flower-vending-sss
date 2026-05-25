@@ -37,14 +37,16 @@ def _load_photo(photo: QLabel, image_path: str | None) -> None:
 
 
 class _ProductDialog(QDialog):
-    def __init__(self, title: str, parent: QWidget | None = None,
-                 product: AdminCatalogItemViewModel | None = None) -> None:
+    def __init__(
+        self,
+        title: str,
+        parent: QWidget | None = None,
+        product: AdminCatalogItemViewModel | None = None,
+    ) -> None:
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setMinimumWidth(400)
-        self.setStyleSheet(
-            f"QDialog {{ background: #FFFFFF; border-radius: {Radius.XL}px; }}"
-        )
+        self.setStyleSheet(f"QDialog {{ background: #FFFFFF; border-radius: {Radius.XL}px; }}")
 
         layout = QFormLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
@@ -120,9 +122,7 @@ class CatalogTab(QWidget):
 
         header = QHBoxLayout()
         title = QLabel("Каталог товаров")
-        title.setStyleSheet(
-            f"font-size: 24px; font-weight: {Typography.WEIGHTS['bold']};"
-        )
+        title.setStyleSheet(f"font-size: 24px; font-weight: {Typography.WEIGHTS['bold']};")
         header.addWidget(title)
         header.addStretch(1)
 
@@ -162,8 +162,8 @@ class CatalogTab(QWidget):
         if not isinstance(model, AdminCatalogTabViewModel):
             return
 
-        while self._grid.count():
-            item = self._grid.takeAt(0)
+        for i in reversed(range(self._grid.count())):
+            item = self._grid.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
 
@@ -174,10 +174,7 @@ class CatalogTab(QWidget):
 
     def _make_product_card(self, product: AdminCatalogItemViewModel) -> QWidget:
         card = QWidget()
-        card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL2}px; "
-            f"border: none;"
-        )
+        card.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL2}px; " f"border: none;")
         card.setMinimumHeight(340)
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(0, 0, 0, 0)
@@ -186,7 +183,9 @@ class CatalogTab(QWidget):
         photo = QLabel()
         photo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         photo.setFixedHeight(160)
-        photo.setStyleSheet(f"background: {BrandColors.GRAY_100}; border-radius: {Radius.XL2}px {Radius.XL2}px 0 0;")
+        photo.setStyleSheet(
+            f"background: {BrandColors.GRAY_100}; border-radius: {Radius.XL2}px {Radius.XL2}px 0 0;"
+        )
         _load_photo(photo, product.image_path)
         card_layout.addWidget(photo)
 
@@ -207,14 +206,20 @@ class CatalogTab(QWidget):
         active_lbl.setStyleSheet(f"font-size: 12px; color: {BrandColors.GRAY_500};")
         toggle_hl.addWidget(active_lbl)
         active_toggle = ToggleSwitch(product.active)
-        active_toggle.toggled.connect(lambda checked, pid=product.product_id: self.action_requested.emit(f"admin_toggle:{pid}:{1 if checked else 0}"))
+        active_toggle.toggled.connect(
+            lambda checked, pid=product.product_id: self.action_requested.emit(
+                f"admin_toggle:{pid}:{1 if checked else 0}"
+            )
+        )
         toggle_hl.addWidget(active_toggle)
         toggle_hl.addStretch(1)
         title_row.addWidget(toggle_wrap)
         info.addLayout(title_row)
 
         price_lbl = QLabel(product.price_text)
-        price_lbl.setStyleSheet(f"font-size: 18px; font-weight: {Typography.WEIGHTS['bold']}; color: {BrandColors.PURPLE_600};")
+        price_lbl.setStyleSheet(
+            f"font-size: 18px; font-weight: {Typography.WEIGHTS['bold']}; color: {BrandColors.PURPLE_600};"
+        )
         info.addWidget(price_lbl)
 
         stock_row = QHBoxLayout()
@@ -237,7 +242,11 @@ class CatalogTab(QWidget):
             f"QSpinBox::up-button:hover {{ background: {BrandColors.GRAY_200}; border-radius: 0 8px 0 0; }}"
             f"QSpinBox::down-button:hover {{ background: {BrandColors.GRAY_200}; border-radius: 0 0 8px 0; }}"
         )
-        stock_spin.valueChanged.connect(lambda val, pid=product.product_id: self.action_requested.emit(f"admin_stock:{pid}:{val}"))
+        stock_spin.valueChanged.connect(
+            lambda val, pid=product.product_id: self.action_requested.emit(
+                f"admin_stock:{pid}:{val}"
+            )
+        )
         stock_row.addWidget(stock_spin)
         stock_row.addStretch(1)
         info.addLayout(stock_row)
@@ -262,7 +271,10 @@ class CatalogTab(QWidget):
             elif act_id == "delete":
                 btn.clicked.connect(lambda checked=False, p=product: self._confirm_delete(p))
             else:
-                btn.clicked.connect(lambda checked=False, aid=f"admin_{act_id}:{product.product_id}": self.action_requested.emit(aid))
+                btn.clicked.connect(
+                    lambda checked=False,
+                    aid=f"admin_{act_id}:{product.product_id}": self.action_requested.emit(aid)
+                )
             actions.addWidget(btn)
         info.addLayout(actions)
 
@@ -273,7 +285,9 @@ class CatalogTab(QWidget):
         dlg = _ProductDialog("Редактировать букет", self, product=product)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             name, price, stock, cat = dlg.product_data()
-            self.action_requested.emit(f"admin_edit:{product.product_id}:{name}:{price}:{stock}:{cat}")
+            self.action_requested.emit(
+                f"admin_edit:{product.product_id}:{name}:{price}:{stock}:{cat}"
+            )
 
     def _confirm_delete(self, product: AdminCatalogItemViewModel) -> None:
         msg = QMessageBox(self)

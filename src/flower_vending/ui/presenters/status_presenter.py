@@ -63,7 +63,9 @@ class StatusPresenter:
         if transaction_id:
             rendered_details.append(f"ID транзакции: {transaction_id}")
         if unresolved_transaction_ids:
-            rendered_details.append("Незавершенные транзакции: " + ", ".join(unresolved_transaction_ids))
+            rendered_details.append(
+                "Незавершенные транзакции: " + ", ".join(unresolved_transaction_ids)
+            )
         return StatusScreenViewModel(
             title="Нужна проверка оператора",
             message="Автомат сохранил небезопасное состояние и ждет сервисного подтверждения.",

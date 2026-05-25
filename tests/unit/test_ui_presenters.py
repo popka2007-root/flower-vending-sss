@@ -46,7 +46,9 @@ class PresenterTests(unittest.TestCase):
             tuple(action.action_id for action in model.quick_insert_actions),
             ("insert_bill:50000", "insert_bill:100000"),
         )
-        self.assertEqual(tuple(action.label for action in model.quick_insert_actions), ("500 ₽", "1 000 ₽"))
+        self.assertEqual(
+            tuple(action.label for action in model.quick_insert_actions), ("500 ₽", "1 000 ₽")
+        )
 
     def test_payment_presenter_humanizes_validator_warnings(self) -> None:
         presenter = PaymentPresenter()
@@ -112,13 +114,17 @@ class PresenterTests(unittest.TestCase):
             for grp in tab.groups:
                 all_actions.extend(grp.actions)
         self.assertTrue(any("Диагностика" in (a.label if a else "") for a in all_actions if a))
-        self.assertTrue(any("Открыть сервисную дверь" in (a.label if a else "") for a in all_actions if a))
+        self.assertTrue(
+            any("Открыть сервисную дверь" in (a.label if a else "") for a in all_actions if a)
+        )
         self.assertIsNotNone(model.kpi)
         self.assertEqual(model.kpi.blockers_count, 1)
 
     def test_status_presenter_restricted_mode_is_explicit(self) -> None:
         presenter = StatusPresenter()
-        model = presenter.present_restricted_mode(details=("manual_review_required", "partial_payout"))
+        model = presenter.present_restricted_mode(
+            details=("manual_review_required", "partial_payout")
+        )
         self.assertEqual(model.title, "Нужна проверка оператора")
         assert model.banner is not None
         assert model.primary_action is not None
@@ -179,7 +185,9 @@ class PresenterTests(unittest.TestCase):
         model = presenter.present_sales_blocked(machine)
         self.assertEqual(model.title, "Продажа временно недоступна")
         self.assertIn("Открыта сервисная дверь.", model.details)
-        self.assertIn("Температура в охлаждаемой камере вышла за безопасный диапазон.", model.details)
+        self.assertIn(
+            "Температура в охлаждаемой камере вышла за безопасный диапазон.", model.details
+        )
         assert model.banner is not None
         self.assertEqual(model.banner.tone, BannerTone.ERROR)
         assert model.primary_action is not None
@@ -227,7 +235,9 @@ class PresenterTests(unittest.TestCase):
 
     def test_status_presenter_manual_review(self) -> None:
         presenter = StatusPresenter()
-        model = presenter.present_manual_review(reason="manual_review_required", transaction_id="tx-42")
+        model = presenter.present_manual_review(
+            reason="manual_review_required", transaction_id="tx-42"
+        )
         self.assertEqual(model.title, "Требуется проверка оператора")
         self.assertTrue(any("tx-42" in d for d in model.details))
         assert model.banner is not None
@@ -318,7 +328,9 @@ class PresenterTests(unittest.TestCase):
             presenter._humanize_blocker("sales are blocked: unknown_blocker"),
             "Продажа временно остановлена до выяснения причины.",
         )
-        result = presenter._humanize_blocker("sales are blocked: critical_temperature, validator_fault")
+        result = presenter._humanize_blocker(
+            "sales are blocked: critical_temperature, validator_fault"
+        )
         self.assertIn("Температура", result)
         self.assertIn("Купюроприемник", result)
 
@@ -361,7 +373,9 @@ class PresenterTests(unittest.TestCase):
             service_mode=False,
             active_transaction_id=None,
         )
-        model = presenter.present_catalog(title="Цветочный автомат", subtitle="Выберите букет", entries=entries, machine=machine)
+        model = presenter.present_catalog(
+            title="Цветочный автомат", subtitle="Выберите букет", entries=entries, machine=machine
+        )
         self.assertEqual(model.title, "Цветочный автомат")
         self.assertEqual(len(model.items), 2)
         self.assertEqual(model.items[0].title, "Красные розы")
@@ -397,7 +411,9 @@ class PresenterTests(unittest.TestCase):
             service_mode=False,
             active_transaction_id=None,
         )
-        model = presenter.present_catalog(title="Каталог", subtitle="Выберите", entries=(entry,), machine=machine)
+        model = presenter.present_catalog(
+            title="Каталог", subtitle="Выберите", entries=(entry,), machine=machine
+        )
         self.assertIsNone(model.banner)
 
     # --- CatalogPresenter: present_product_details ---

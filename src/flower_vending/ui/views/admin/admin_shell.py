@@ -94,7 +94,7 @@ class AdminShell(QWidget):
                 f"background: transparent; }}"
                 f"QPushButton:hover {{ background: rgba(255,255,255,0.08); "
                 f"color: #FFFFFF; }}"
-                f"QPushButton[active=\"true\"] {{ background: rgba(255,255,255,0.10); "
+                f'QPushButton[active="true"] {{ background: rgba(255,255,255,0.10); '
                 f"color: #FFFFFF; "
                 f"border-left: 3px solid #A78BFA; }}"
             )
@@ -108,7 +108,9 @@ class AdminShell(QWidget):
             btn_layout.addWidget(ic)
             lbl = QLabel(label)
             lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-            lbl.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['medium']}; color: rgba(255,255,255,0.60); background: transparent;")
+            lbl.setStyleSheet(
+                f"font-size: 14px; font-weight: {Typography.WEIGHTS['medium']}; color: rgba(255,255,255,0.60); background: transparent;"
+            )
             btn_layout.addWidget(lbl)
             btn_layout.addStretch(1)
 
@@ -148,7 +150,9 @@ class AdminShell(QWidget):
         exit_layout.addWidget(exit_icon)
         exit_lbl = QLabel("Выйти")
         exit_lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        exit_lbl.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['medium']}; color: #EF4444;")
+        exit_lbl.setStyleSheet(
+            f"font-size: 14px; font-weight: {Typography.WEIGHTS['medium']}; color: #EF4444;"
+        )
         exit_layout.addWidget(exit_lbl)
         exit_layout.addStretch(1)
         exit_btn.clicked.connect(lambda: self.exit_requested.emit())
@@ -175,7 +179,7 @@ class AdminShell(QWidget):
             repolish(btn)
 
     def set_pending_count(self, count: int) -> None:
-        if hasattr(self, '_orders_badge'):
+        if hasattr(self, "_orders_badge"):
             if count > 0:
                 self._orders_badge.setText(str(count))
                 self._orders_badge.show()

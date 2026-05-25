@@ -23,7 +23,9 @@ _transaction_ctx: contextvars.ContextVar[str] = contextvars.ContextVar(
 )
 
 
-def set_log_context(*, correlation_id: str | None = None, transaction_id: str | None = None) -> None:
+def set_log_context(
+    *, correlation_id: str | None = None, transaction_id: str | None = None
+) -> None:
     if correlation_id is not None:
         _correlation_ctx.set(correlation_id)
     if transaction_id is not None:
@@ -34,10 +36,28 @@ _ACTIVE_LISTENERS: list[logging.handlers.QueueListener] = []
 _HANDLERS: list[logging.Handler] = []
 
 _STANDARD_FIELDS = {
-    "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
-    "module", "exc_info", "exc_text", "stack_info", "lineno", "funcName",
-    "created", "msecs", "relativeCreated", "thread", "threadName",
-    "processName", "process", "message", "asctime",
+    "name",
+    "msg",
+    "args",
+    "levelname",
+    "levelno",
+    "pathname",
+    "filename",
+    "module",
+    "exc_info",
+    "exc_text",
+    "stack_info",
+    "lineno",
+    "funcName",
+    "created",
+    "msecs",
+    "relativeCreated",
+    "thread",
+    "threadName",
+    "processName",
+    "process",
+    "message",
+    "asctime",
 }
 
 
@@ -71,7 +91,9 @@ class StructuredLoggerAdapter(logging.LoggerAdapter[logging.Logger]):
         merged.update(extra)
         return StructuredLoggerAdapter(self.logger, merged)
 
-    def process(self, msg: object, kwargs: MutableMapping[str, Any]) -> tuple[object, MutableMapping[str, Any]]:
+    def process(
+        self, msg: object, kwargs: MutableMapping[str, Any]
+    ) -> tuple[object, MutableMapping[str, Any]]:
         extra = dict(self._base_extra())
         ctx_correlation = _correlation_ctx.get()
         if ctx_correlation:
@@ -113,7 +135,9 @@ def _safe_flush_close(handler: logging.Handler) -> None:
         pass
 
 
-def configure_logging(config: LoggingConfig, *, logger_name: str = "flower_vending") -> StructuredLoggerAdapter:
+def configure_logging(
+    config: LoggingConfig, *, logger_name: str = "flower_vending"
+) -> StructuredLoggerAdapter:
     log_directory = Path(config.directory)
     log_directory.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger(logger_name)
@@ -122,8 +146,10 @@ def configure_logging(config: LoggingConfig, *, logger_name: str = "flower_vendi
     logger.propagate = False
 
     formatter: logging.Formatter
-    formatter = JsonLogFormatter(sensitive_fields=config.sensitive_fields) if config.json_logs else logging.Formatter(
-        "%(asctime)s %(levelname)s %(name)s %(message)s"
+    formatter = (
+        JsonLogFormatter(sensitive_fields=config.sensitive_fields)
+        if config.json_logs
+        else logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
     )
 
     file_handler: logging.Handler = logging.handlers.RotatingFileHandler(

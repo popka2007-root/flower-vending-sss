@@ -153,7 +153,8 @@ class ProductDetailsScreenWidget(QWidget):
             pix = QPixmap(model.image_path)
             if not pix.isNull():
                 scaled = pix.scaled(
-                    420, 420,
+                    420,
+                    420,
                     Qt.AspectRatioMode.KeepAspectRatioByExpanding,
                     Qt.TransformationMode.SmoothTransformation,
                 )
@@ -161,8 +162,8 @@ class ProductDetailsScreenWidget(QWidget):
                 self._photo.setText("")
 
         pm_layout = self._payment_methods_wrap.layout()
-        while pm_layout.count():
-            item = pm_layout.takeAt(0)
+        for i in reversed(range(pm_layout.count())):
+            item = pm_layout.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
 
@@ -179,20 +180,23 @@ class ProductDetailsScreenWidget(QWidget):
         chip.setFixedHeight(64)
         chip.setMinimumWidth(140)
         chip.setMaximumWidth(250)
-        chip.setStyleSheet(
-            f"background: #FFFFFF; border: none; "
-            f"border-radius: {Radius.XL}px;"
-        )
+        chip.setStyleSheet(f"background: #FFFFFF; border: none; " f"border-radius: {Radius.XL}px;")
         chip_layout = QVBoxLayout(chip)
         chip_layout.setContentsMargins(16, 10, 16, 10)
-        icon_map = {"cash": IconName.WALLET, "card": IconName.CREDIT_CARD, "sbp": IconName.REFRESH_CW}
+        icon_map = {
+            "cash": IconName.WALLET,
+            "card": IconName.CREDIT_CARD,
+            "sbp": IconName.REFRESH_CW,
+        }
         ic = icon(icon_map.get(method_id, IconName.WALLET), 24, BrandColors.PURPLE_600)
         icon_lbl = QLabel()
         icon_lbl.setPixmap(ic.pixmap(24, 24))
         icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl = QLabel(label)
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet(f"font-size: 13px; font-weight: {Typography.WEIGHTS['medium']}; color: {BrandColors.GRAY_500};")
+        lbl.setStyleSheet(
+            f"font-size: 13px; font-weight: {Typography.WEIGHTS['medium']}; color: {BrandColors.GRAY_500};"
+        )
         chip_layout.addWidget(icon_lbl)
         chip_layout.addWidget(lbl)
         return chip

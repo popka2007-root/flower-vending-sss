@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from flower_vending.domain.entities.change_reserve import ChangeReserve
-from flower_vending.domain.exceptions import ChangeUnavailableError
+from flower_vending.domain.exceptions import ChangeUnavailableError, DomainValidationError
 from flower_vending.domain.value_objects import Currency
 
 
@@ -32,8 +32,12 @@ class MoneyInventory:
         drift_detected: bool = False,
     ) -> None:
         self.currency = currency if currency is not None else Currency()
-        self._accounting_counts = dict(accounting_counts_by_denomination) if accounting_counts_by_denomination else {}
-        self._reserved_counts = dict(reserved_counts_by_denomination) if reserved_counts_by_denomination else {}
+        self._accounting_counts = (
+            dict(accounting_counts_by_denomination) if accounting_counts_by_denomination else {}
+        )
+        self._reserved_counts = (
+            dict(reserved_counts_by_denomination) if reserved_counts_by_denomination else {}
+        )
         self.physical_state_confidence = physical_state_confidence
         self.exact_change_only = exact_change_only
         self.last_reconciled_at = last_reconciled_at
@@ -68,6 +72,10 @@ class MoneyInventory:
         return all(available.get(denomination, 0) >= count for denomination, count in plan.items())
 
     async def reserve(self, transaction_id: str, plan: dict[int, int]) -> ChangeReserve:
+        for count in plan.values():
+            if count < 0:
+                raise DomainValidationError("reserve plan cannot contain negative values")
+
         async with self._lock:
             if not self._can_reserve_unlocked(plan):
                 raise ChangeUnavailableError("insufficient change inventory for requested reserve")
@@ -92,6 +100,10 @@ class MoneyInventory:
         self.drift_detected = False
 
     async def consume(self, reserve: ChangeReserve) -> None:
+        for count in reserve.reserved_counts_by_denomination.values():
+            if count < 0:
+                raise DomainValidationError("consume plan cannot contain negative values")
+
         async with self._lock:
             for denomination, count in reserve.reserved_counts_by_denomination.items():
                 self._accounting_counts[denomination] = (
