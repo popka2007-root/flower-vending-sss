@@ -148,6 +148,10 @@ class ManualInterventionRequiredError(RecoveryError):
         )
 
 
+class TransactionRecoveryError(RecoveryError):
+    """Raised when a restored active transaction is missing from the transaction set."""
+
+
 class TerminalLockedError(FlowerVendingError):
     """Raised when the terminal is locked due to a faulted or ambiguous transaction state."""
     def __init__(self, message: str = "") -> None:
