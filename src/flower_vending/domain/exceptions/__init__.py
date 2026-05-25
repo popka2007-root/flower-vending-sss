@@ -146,3 +146,7 @@ class ManualInterventionRequiredError(RecoveryError):
             message,
             user_message="Автомат на обслуживании. Пожалуйста, обратитесь к администратору. Приносим извинения!",
         )
+
+
+class TransactionRecoveryError(RecoveryError):
+    """Raised when a restored active transaction is missing from the transaction set."""
