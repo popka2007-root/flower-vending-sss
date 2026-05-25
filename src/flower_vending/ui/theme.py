@@ -17,9 +17,8 @@ from flower_vending.ui.design_tokens import (
 
 
 def _build_stylesheet(tokens: ColorTokens) -> str:
-    primary_gradient = f"qlineargradient(x1:0 y1:0, x2:1 y2:0, stop:0 {BrandColors.PINK_500}, stop:1 {BrandColors.PURPLE_600});"
-    primary_brighter = f"qlineargradient(x1:0 y1:0, x2:1 y2:0, stop:0 {BrandColors.PINK_500}, stop:0.5 #C026D3, stop:1 {BrandColors.PURPLE_600});"
-    primary_darker = "qlineargradient(x1:0 y1:0, x2:1 y2:0, stop:0 #BE185D, stop:1 #6B21A8);"
+    primary_gradient = f"background-color: {tokens.primary};"
+    primary_brighter = "background-color: #F08A1A;"
 
     return f"""
 QWidget {{
@@ -113,19 +112,20 @@ QPushButton#PrimaryButton {{
     min-height: 56px;
     padding: 12px 28px;
     border: none;
-    border-radius: {Radius.XL}px;
-    background: {primary_gradient}
+    border-radius: 28px;
+    {primary_gradient}
     color: #FFFFFF;
     font-size: 18px;
     font-weight: {Typography.WEIGHTS["bold"]};
+    margin: 0px;
 }}
 
 QPushButton#PrimaryButton:hover {{
-    background: {primary_brighter}
+    {primary_brighter}
 }}
 
 QPushButton#PrimaryButton:pressed {{
-    background: {primary_darker}
+    margin: 2px -2px -2px 2px;
 }}
 
 QPushButton#PrimaryButton:disabled {{
@@ -230,16 +230,20 @@ QPushButton#MoneyButton {{
     min-height: 52px;
     padding: 10px 20px;
     border: 2px solid {BrandColors.PURPLE_50};
-    border-radius: {Radius.XL}px;
+    border-radius: 26px;
     background: #FFFFFF;
-    color: #9333EA;
+    color: {tokens.primary};
     font-size: 17px;
     font-weight: {Typography.WEIGHTS["bold"]};
 }}
 
 QPushButton#MoneyButton:hover {{
     background: {BrandColors.PURPLE_50};
-    border-color: #9333EA;
+    border-color: {tokens.primary};
+}}
+
+QPushButton#MoneyButton:pressed {{
+    margin: 2px -2px -2px 2px;
 }}
 
 /* ---- Destructive/Danger Button ---- */
@@ -264,18 +268,18 @@ QPushButton#DangerButton:hover {{
 
 QFrame#Card {{
     background: {tokens.card};
-    border-radius: {Radius.XL}px;
+    border-radius: 24px;
 }}
 
 QFrame#KPICard {{
     background: #FFFFFF;
-    border-radius: {Radius.XL}px;
+    border-radius: 24px;
     padding: 0;
 }}
 
 QFrame#ProductCard {{
     background: #FFFFFF;
-    border-radius: {Radius.XL2}px;
+    border-radius: 24px;
     padding: 0;
 }}
 
@@ -340,9 +344,9 @@ QLabel#ProductDescription {{
 }}
 
 QLabel#ProductPrice {{
-    font-size: 24px;
-    font-weight: {Typography.WEIGHTS["bold"]};
-    color: #EC4899;
+    font-size: 28px;
+    font-weight: {Typography.WEIGHTS["light"]};
+    color: {tokens.foreground};
 }}
 
 QLabel#ProductCategory {{
@@ -401,7 +405,7 @@ QLabel#PanelCaption {{
 QFrame#MetricCard {{
     background: {BrandColors.PURPLE_50};
     border: none;
-    border-radius: {Radius.XL}px;
+    border-radius: 24px;
 }}
 
 QLabel#MetricCaption {{
@@ -411,13 +415,13 @@ QLabel#MetricCaption {{
 }}
 
 QLabel#MetricValue {{
-    color: #9333EA;
+    color: {tokens.primary};
     font-size: 32px;
     font-weight: {Typography.WEIGHTS["bold"]};
 }}
 
 QLabel#MetricValue[accent="true"] {{
-    color: #EC4899;
+    color: {tokens.primary};
 }}
 
 /* ==========================

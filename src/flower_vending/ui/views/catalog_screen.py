@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -28,7 +28,11 @@ from PySide6.QtWidgets import (
 )
 
 from flower_vending.ui.icons import IconName, icon
-from flower_vending.ui.viewmodels import CatalogItemViewModel, CatalogScreenViewModel
+from flower_vending.ui.viewmodels import (
+    CatalogItemViewModel,
+    CatalogScreenViewModel,
+    CatalogCategoryViewModel,
+)
 
 SP = 4
 
@@ -107,7 +111,16 @@ class _CartManager:
                 return
         if available_quantity > 0:
             self.items.append(
-                CartItem(product_id, slot_id, title, price_minor, currency, image_path, 1, available_quantity)
+                CartItem(
+                    product_id,
+                    slot_id,
+                    title,
+                    price_minor,
+                    currency,
+                    image_path,
+                    1,
+                    available_quantity,
+                )
             )
         self._notify()
 
@@ -230,17 +243,17 @@ class CatalogScreenWidget(QWidget):
         self.setStyleSheet(
             """
             QWidget#CustomerScreen {
-                background: #B8B8C8;
+                background: #FAF6EE;
             }
             """
         )
-        self._scroll.viewport().setStyleSheet("background: #B8B8C8;")
+        self._scroll.viewport().setStyleSheet("background: #FAF6EE;")
 
     def _build_header(self) -> None:
         header_wrap = QFrame()
         header_wrap.setObjectName("HeaderWrap")
         header_wrap.setFrameShape(QFrame.Shape.NoFrame)
-        header_wrap.setStyleSheet("QFrame#HeaderWrap { background: #FFFFFF; border: none; }")
+        header_wrap.setStyleSheet("QFrame#HeaderWrap { background: transparent; border: none; }")
 
         header_layout = QHBoxLayout(header_wrap)
         header_layout.setContentsMargins(40, 16, 40, 16)
@@ -251,28 +264,53 @@ class CatalogScreenWidget(QWidget):
         logo_row = QHBoxLayout()
         logo_row.setSpacing(12)
 
+        # SVG logo vector implementation using QLabel
         self._flower_icon = QLabel()
-        self._flower_icon.setFixedSize(36, 36)
-        self._flower_icon.setStyleSheet("background: #E13B9B; border-radius: 8px;")
-        self._flower_icon.setPixmap(
-            icon(IconName.SHOPPING_CART, 20, "#FFFFFF").pixmap(QSize(20, 20))
+        self._flower_icon.setFixedSize(56, 56)
+        self._flower_icon.setStyleSheet("background: transparent; border: none;")
+        # Provide a basic drawn circle to represent the SVG icon
+        pix = QPixmap(56, 56)
+        pix.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pix)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QColor("#EF7D00"))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(0, 0, 56, 56)
+        # draw a simple star inside as logo mock
+        painter.setPen(QColor("#FFFFFF"))
+        painter.setBrush(QColor("#FFFFFF"))
+        painter.drawEllipse(22, 22, 12, 12)
+        painter.end()
+        self._flower_icon.setPixmap(pix)
+
+        logo_text = QLabel()
+        logo_text.setText("ЭКСПРЕСС<br><font color='#EF7D00'>БУКЕТ 24</font>")
+        logo_text.setFont(_f(20, 900))
+        logo_text.setStyleSheet(
+            "color: #333333; line-height: 0.9; text-transform: uppercase; letter-spacing: 2px;"
         )
-        self._flower_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        logo_row.addWidget(self._flower_icon)
+        logo_row.addWidget(logo_text)
+        logo_row.addStretch(1)
 
         self._hero_title = QLabel()
-        self._hero_title.setFont(_f(22, 800))
-        self._hero_title.setStyleSheet("color: #1A1A24;")
+        self._hero_title.setFont(_f(36, 400, serif=True))
+        self._hero_title.setStyleSheet("color: #332A26;")
+        self._hero_title.setText("Выбирайте с любовью ❤️")
+        self._hero_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         self._hero_subtitle = QLabel()
-        self._hero_subtitle.setFont(_f(13, 400))
-        self._hero_subtitle.setStyleSheet("color: #8E8E93;")
+        self._hero_subtitle.setFont(_f(15, 400))
+        self._hero_subtitle.setStyleSheet("color: #8C7B73;")
+        self._hero_subtitle.setText("Коснитесь букета, чтобы добавить его в заказ")
+        self._hero_subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         self._hero_title.mousePressEvent = self._on_title_tap
         self._hero_subtitle.mousePressEvent = self._on_title_tap
 
-        logo_row.addWidget(self._flower_icon)
-        logo_row.addWidget(self._hero_title)
-        logo_row.addStretch(1)
-
         logo_text_col.addLayout(logo_row)
+        logo_text_col.addWidget(self._hero_title)
         logo_text_col.addWidget(self._hero_subtitle)
 
         header_layout.addLayout(logo_text_col, 1)
@@ -287,6 +325,13 @@ class CatalogScreenWidget(QWidget):
         self._cart_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._cart_btn.setMinimumHeight(44)
         self._cart_btn.setFont(_f(15, 600))
+
+        shadow = QGraphicsDropShadowEffect(self._cart_btn)
+        shadow.setBlurRadius(15)
+        shadow.setColor(QColor(239, 125, 0, 76))
+        shadow.setOffset(0, 4)
+        self._cart_btn.setGraphicsEffect(shadow)
+
         self._cart_btn.setStyleSheet(
             f"""
             QPushButton {{
@@ -295,11 +340,15 @@ class CatalogScreenWidget(QWidget):
                 border: none;
                 color: white;
                 padding: 10px 24px;
+                margin: 0px;
             }}
             QPushButton:hover {{ background: {GRADIENT_HOVER}; }}
+            QPushButton:pressed {{
+                margin: 2px -2px -2px 2px;
+            }}
             """
         )
-        self._cart_btn.setIcon(icon(IconName.SHOPPING_CART, 18, "#FFFFFF"))
+        self._cart_btn.setIcon(icon(IconName.SHOPPING_BAG, 18, "#FFFFFF"))
         self._cart_btn.clicked.connect(self._toggle_cart)
         cbl.addWidget(self._cart_btn)
         header_layout.addWidget(self._cart_btn_wrap, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -530,13 +579,18 @@ class CatalogScreenWidget(QWidget):
         self._hero_subtitle.setText(model.subtitle)
         self.set_catalog_items(list(model.items), list(model.categories))
 
-    def set_catalog_items(self, items: list[CatalogItemViewModel], categories: list[CatalogCategoryViewModel] | None = None) -> None:
+    def set_catalog_items(
+        self,
+        items: list[CatalogItemViewModel],
+        categories: list[CatalogCategoryViewModel] | None = None,
+    ) -> None:
         self._catalog_items = items
         if not categories:
             seen = {}
             for item in items:
                 seen.setdefault(item.category, item.category_label)
             from flower_vending.ui.viewmodels.screens import CatalogCategoryViewModel
+
             self._categories = [CatalogCategoryViewModel("all", "Все")] + [
                 CatalogCategoryViewModel(cat_id, label) for cat_id, label in seen.items()
             ]
@@ -583,7 +637,9 @@ class CatalogScreenWidget(QWidget):
                     QPushButton:hover { background: #E5E7EB; color: #111827; }
                 """)
 
-            btn.clicked.connect(lambda _checked=False, cat_id=category.category_id: self._set_category(cat_id))
+            btn.clicked.connect(
+                lambda _checked=False, cat_id=category.category_id: self._set_category(cat_id)
+            )
             self._categories_layout.addWidget(btn)
 
         self._categories_layout.addStretch(1)
