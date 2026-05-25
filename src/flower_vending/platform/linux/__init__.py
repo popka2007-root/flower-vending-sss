@@ -38,6 +38,13 @@ def build_profile(config: PlatformConfig) -> PlatformProfile:
                 config={},
             ),
             PlatformExtensionPoint(
+                name="kiosk_lock",
+                mode="logind",
+                status=PlatformIntegrationStatus.EXTENSION_POINT,
+                description="Linux kiosk lock can use logind Inhibit or a custom session manager.",
+                config={"adapter": "SimulatorKioskLock"},
+            ),
+            PlatformExtensionPoint(
                 name="watchdog",
                 mode=config.watchdog.adapter,
                 status=PlatformIntegrationStatus.EXTENSION_POINT,

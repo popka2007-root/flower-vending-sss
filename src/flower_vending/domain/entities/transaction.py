@@ -95,6 +95,7 @@ class Transaction:
     change_reserve: ChangeReserve | None = None
     created_at: datetime = field(default_factory=_ts)
     updated_at: datetime = field(default_factory=_ts)
+    _cancelled: bool = field(default=False, repr=False)
 
     def touch(self) -> None:
         self.updated_at = _ts()
@@ -111,6 +112,8 @@ class Transaction:
         self.touch()
 
     def record_stacked_cash(self, bill_minor_units: int) -> None:
+        if self._cancelled:
+            raise InvariantViolationError("cannot record cash on a cancelled transaction")
         if self.payment_session is None:
             raise PaymentSessionUnavailableError("no active payment session")
         self.payment_session.add_stacked_bill(bill_minor_units)
@@ -182,6 +185,7 @@ class Transaction:
         self.touch()
 
     def cancel(self) -> None:
+        self._cancelled = True
         self.status = TransactionStatus.CANCELLED
         self.payment_status = PaymentStatus.CANCELLED
         if self.payment_session is not None:

@@ -25,6 +25,10 @@ class TransportIOError(DeviceAdapterError):
     """Raised on low-level transport read or write failures."""
 
 
+class DeviceProtocolError(DeviceAdapterError):
+    """Raised on protocol-level communication failures."""
+
+
 class ProtocolDecodeError(DeviceAdapterError):
     """Raised when a wire-level message cannot be decoded safely."""
 

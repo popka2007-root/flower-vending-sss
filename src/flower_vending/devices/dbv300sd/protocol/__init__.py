@@ -4,7 +4,6 @@ from flower_vending.devices.dbv300sd.protocol.base import (
     DBV300Protocol,
     DeferredMDBProtocol,
     DeferredPulseProtocol,
-    DeferredSerialProtocol,
 )
 from flower_vending.devices.dbv300sd.protocol.trace import (
     ProtocolTraceRecorder,
@@ -16,7 +15,6 @@ __all__ = [
     "DBV300Protocol",
     "DeferredMDBProtocol",
     "DeferredPulseProtocol",
-    "DeferredSerialProtocol",
     "ProtocolTraceRecorder",
     "ProtocolTraceRecord",
     "format_bytes_hex",

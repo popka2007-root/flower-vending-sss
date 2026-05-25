@@ -16,8 +16,10 @@ from flower_vending.domain.commands.purchase_commands import (
     ConfirmPickup,
     StartPurchase,
 )
+from flower_vending.domain.commands.service_commands import ToggleProductCommand
 from flower_vending.domain.entities import Transaction
 from flower_vending.domain.events import DomainEvent
+from flower_vending.domain.events.machine_events import machine_event
 from flower_vending.domain.events.payment_events import payment_event
 from flower_vending.domain.events.vending_events import vending_event
 from flower_vending.domain.exceptions import InventoryMismatchError
@@ -68,7 +70,9 @@ class VendingController:
         )
         self._machine_status_service.set_active_transaction(transaction.transaction_id.value)
         self._fsm.transition(MachineState.PRODUCT_SELECTED, "product_selected")
+        await self._motor_controller.stop_motion()
         self._fsm.transition(MachineState.CHECKING_AVAILABILITY, "availability_check_requested")
+        self._machine_status_service.ensure_sales_allowed()
         self._fsm.transition(MachineState.CHECKING_CHANGE, "change_check_requested")
         self._fsm.transition(MachineState.WAITING_FOR_PAYMENT, "waiting_for_payment")
         self._machine_status_service.set_machine_state(self._fsm.current_state)
@@ -96,9 +100,8 @@ class VendingController:
             transaction_id=command.transaction_id,
             correlation_id=command.correlation_id,
         )
-        if self._fsm.current_state is MachineState.CANCELLED:
-            self._fsm.transition(MachineState.IDLE, "transaction_cancelled")
-            self._machine_status_service.set_machine_state(self._fsm.current_state)
+        self._fsm.force_state(MachineState.IDLE, "transaction_cancelled")
+        self._machine_status_service.set_machine_state(self._fsm.current_state)
         return transaction.transaction_id.value
 
     async def confirm_pickup(self, command: ConfirmPickup) -> str:
@@ -175,20 +178,27 @@ class VendingController:
             slot_id=transaction.slot_id.value,
         )
         try:
+            await self._motor_controller.stop_motion()
             await self._motor_controller.vend_slot(
                 slot_id=transaction.slot_id.value,
                 correlation_id=transaction.correlation_id.value,
             )
         except Exception:
             transaction.mark_faulted()
-            self._fsm.transition(MachineState.FAULT, "motor_fault")
-            self._machine_status_service.set_machine_state(self._fsm.current_state)
             self._record_outcome(
                 transaction,
                 action_name="motor_vend_requested",
                 logical_step="handle_vend_authorized.vend_motor",
                 outcome=JournalOutcome.AMBIGUOUS,
                 slot_id=transaction.slot_id.value,
+            )
+            self._transaction_coordinator.clear_active(transaction.transaction_id.value)
+            self._machine_status_service.set_active_transaction(None)
+            self._fsm.transition(MachineState.FAULT, "motor_fault")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+            await self._event_bus.publish(
+                vending_event("machine_faulted", correlation_id=transaction.correlation_id.value,
+                              transaction_id=transaction.transaction_id.value, faults=["motor_fault"])
             )
             raise
         self._record_outcome(
@@ -198,7 +208,20 @@ class VendingController:
             outcome=JournalOutcome.SUCCEEDED,
             slot_id=transaction.slot_id.value,
         )
+        self._record_intent(
+            transaction,
+            action_name="inventory_decrement",
+            logical_step="handle_vend_authorized.mark_vended",
+            slot_id=transaction.slot_id.value,
+        )
         self._inventory_service.mark_vended(transaction.slot_id.value)
+        self._record_outcome(
+            transaction,
+            action_name="inventory_decrement",
+            logical_step="handle_vend_authorized.mark_vended",
+            outcome=JournalOutcome.SUCCEEDED,
+            slot_id=transaction.slot_id.value,
+        )
         transaction.mark_product_dispensed()
         await self._event_bus.publish(
             vending_event(
@@ -219,13 +242,19 @@ class VendingController:
             await self._window_controller.open_window(correlation_id=transaction.correlation_id.value)
         except Exception:
             transaction.mark_faulted()
-            self._fsm.transition(MachineState.FAULT, "delivery_window_fault")
-            self._machine_status_service.set_machine_state(self._fsm.current_state)
             self._record_outcome(
                 transaction,
                 action_name="window_open_requested",
                 logical_step="handle_vend_authorized.open_window",
                 outcome=JournalOutcome.AMBIGUOUS,
+            )
+            self._transaction_coordinator.clear_active(transaction.transaction_id.value)
+            self._machine_status_service.set_active_transaction(None)
+            self._fsm.transition(MachineState.FAULT, "delivery_window_fault")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+            await self._event_bus.publish(
+                vending_event("machine_faulted", correlation_id=transaction.correlation_id.value,
+                              transaction_id=transaction.transaction_id.value, faults=["delivery_window_fault"])
             )
             raise
         self._record_outcome(
@@ -262,6 +291,23 @@ class VendingController:
             transaction_status=transaction.status.value,
             payload=dict(payload),
         )
+
+    async def handle_toggle_product(self, command: ToggleProductCommand) -> tuple[str, bool]:
+        product, slot = self._inventory_service.set_product_enabled(
+            command.product_id, command.enabled,
+        )
+        state = product.enabled
+        self._machine_status_service.set_machine_state(self._fsm.current_state)
+        await self._event_bus.publish(
+            machine_event(
+                "product_toggled",
+                correlation_id=command.correlation_id,
+                product_id=command.product_id,
+                enabled=str(state),
+                operator_id=command.operator_id,
+            )
+        )
+        return command.product_id, state
 
     def _record_outcome(
         self,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from flower_vending.ui.facade import MachineUiSnapshot
+from flower_vending.ui.presenters.formatting import format_money
 from flower_vending.ui.viewmodels.common import ActionButtonViewModel, BannerTone, BannerViewModel
 from flower_vending.ui.viewmodels.screens import DeliveryScreenViewModel, StatusScreenViewModel
 
@@ -47,17 +48,100 @@ class StatusPresenter:
                 message="Нужно устранить причину блокировки перед продажей.",
                 tone=BannerTone.ERROR,
             ),
+            primary_action=ActionButtonViewModel("clear_restricted_state", "Сбросить блокировки"),
             secondary_action=ActionButtonViewModel("open_service", "Открыть сервис"),
         )
 
-    def present_restricted_mode(self, *, details: tuple[str, ...]) -> StatusScreenViewModel:
+    def present_restricted_mode(
+        self,
+        *,
+        details: tuple[str, ...],
+        transaction_id: str | None = None,
+        unresolved_transaction_ids: tuple[str, ...] = (),
+    ) -> StatusScreenViewModel:
+        rendered_details = [self._humanize_blocker(item) for item in details]
+        if transaction_id:
+            rendered_details.append(f"ID транзакции: {transaction_id}")
+        if unresolved_transaction_ids:
+            rendered_details.append("Незавершенные транзакции: " + ", ".join(unresolved_transaction_ids))
         return StatusScreenViewModel(
             title="Нужна проверка оператора",
             message="Автомат сохранил небезопасное состояние и ждет сервисного подтверждения.",
-            details=tuple(self._humanize_blocker(item) for item in details),
+            details=tuple(dict.fromkeys(rendered_details)),
             banner=BannerViewModel(
                 title="Сервисная проверка",
                 message="Клиентская продажа остановлена до восстановления автомата.",
+                tone=BannerTone.ERROR,
+            ),
+            primary_action=ActionButtonViewModel("clear_restricted_state", "Сбросить блокировки"),
+            secondary_action=ActionButtonViewModel("open_service", "Открыть сервисный экран"),
+        )
+
+    def present_refund(
+        self,
+        *,
+        refund_minor_units: int = 0,
+        currency_code: str = "RUB",
+        refund_complete: bool = False,
+        error_message: str | None = None,
+    ) -> StatusScreenViewModel:
+        if refund_complete:
+            return StatusScreenViewModel(
+                title="Средства возвращены",
+                message="Внесённые средства полностью возвращены.",
+                details=("Заберите деньги из лотка выдачи.",),
+                banner=BannerViewModel(
+                    title="Возврат выполнен",
+                    message="Можно начать новую покупку или обратиться в сервис.",
+                    tone=BannerTone.SUCCESS,
+                ),
+                primary_action=ActionButtonViewModel("show_catalog", "Начать новую покупку"),
+                secondary_action=ActionButtonViewModel("open_service", "Сервис"),
+            )
+        if error_message:
+            return StatusScreenViewModel(
+                title="Ошибка возврата",
+                message=self._humanize_blocker(error_message),
+                details=("Требуется сервисная проверка для завершения возврата.",),
+                banner=BannerViewModel(
+                    title="Возврат не завершён",
+                    message="Обратитесь к оператору.",
+                    tone=BannerTone.ERROR,
+                ),
+                primary_action=ActionButtonViewModel("open_service", "Открыть сервис"),
+                secondary_action=ActionButtonViewModel("show_home", "На главный экран"),
+            )
+        money_text = format_money(refund_minor_units, currency_code)
+        return StatusScreenViewModel(
+            title="Возврат средств",
+            message=f"Автомат возвращает {money_text}. Пожалуйста, ожидайте.",
+            details=("Не закрывайте окно выдачи до завершения возврата.",),
+            banner=BannerViewModel(
+                title="Идёт возврат",
+                message="Не отходите от автомата.",
+                tone=BannerTone.INFO,
+            ),
+            secondary_action=ActionButtonViewModel("open_service", "Сервис"),
+        )
+
+    def present_manual_review(
+        self,
+        *,
+        reason: str = "manual_review_required",
+        transaction_id: str | None = None,
+    ) -> StatusScreenViewModel:
+        humanized = self._humanize_blocker(reason)
+        details = []
+        if transaction_id:
+            details.append(f"Транзакция: {transaction_id}")
+        details.append("Оператор должен проверить состояние автомата и подтвердить результат.")
+        return StatusScreenViewModel(
+            title="Требуется проверка оператора",
+            message=humanized,
+            details=tuple(details),
+            banner=BannerViewModel(
+                title="Ручная проверка",
+                message="Автомат остановлен до подтверждения оператором.",
                 tone=BannerTone.ERROR,
             ),
             primary_action=ActionButtonViewModel("open_service", "Открыть сервисный экран"),
@@ -81,7 +165,7 @@ class StatusPresenter:
                 message=human_message,
                 tone=BannerTone.ERROR,
             ),
-            primary_action=ActionButtonViewModel("show_home", "На главный экран"),
+            primary_action=ActionButtonViewModel("clear_restricted_state", "Сбросить и на главную"),
             secondary_action=ActionButtonViewModel("open_service", "Сервис"),
         )
 
@@ -121,6 +205,7 @@ class StatusPresenter:
                 tone=BannerTone.SUCCESS,
             ),
             primary_action=ActionButtonViewModel("confirm_pickup", "Симулятор: букет забран"),
+            remaining_seconds=pickup_timeout_remaining_s,
         )
 
     def _pickup_timeout_status(self, *, active: bool, remaining_s: float | None) -> str:
@@ -131,7 +216,25 @@ class StatusPresenter:
         return f"Окно закроется автоматически через {max(0, round(remaining_s))} с."
 
     def _humanize_blocker(self, blocker: str) -> str:
-        normalized = blocker.lower()
+        normalized = blocker.lower().strip()
+        if normalized.startswith("tx:"):
+            return f"ID транзакции: {blocker.split(':', maxsplit=1)[1].strip()}"
+        if normalized.startswith("unresolved:"):
+            raw_ids = blocker.split(":", maxsplit=1)[1].strip()
+            if not raw_ids:
+                return "Незавершенные транзакции: нет данных"
+            return "Незавершенные транзакции: " + ", ".join(
+                item.strip() for item in raw_ids.split(",") if item.strip()
+            )
+        if normalized.startswith("sales are blocked:"):
+            raw_blockers = blocker.split(":", maxsplit=1)[1].strip()
+            if not raw_blockers:
+                return "Продажа временно остановлена до выяснения причины."
+            parts = [part.strip() for part in raw_blockers.split(",") if part.strip()]
+            if not parts:
+                return "Продажа временно остановлена до выяснения причины."
+            humanized = [self._humanize_blocker(part) for part in parts]
+            return "; ".join(dict.fromkeys(humanized))
         mapping = {
             "critical_temperature": "Температура в охлаждаемой камере вышла за безопасный диапазон.",
             "device_fault": "Обнаружена неисправность устройства.",
@@ -142,6 +245,7 @@ class StatusPresenter:
             "partial_payout": "Сдача выдана не полностью.",
             "pickup_timeout": "Время получения истекло, окно выдачи закрывается.",
         }
+        mapping["unknown_blocker"] = "Продажа временно остановлена до выяснения причины."
         if normalized in mapping:
             return mapping[normalized]
         if "validator unavailable" in normalized or "validator" in normalized:
@@ -154,4 +258,4 @@ class StatusPresenter:
             return "Автомат не может безопасно выдать сдачу."
         if "pickup timeout" in normalized:
             return "Время получения истекло, окно выдачи закрывается."
-        return blocker.replace("_", " ")
+        return f"Неизвестная причина: {blocker.replace('_', ' ')}"

@@ -20,6 +20,8 @@ from flower_vending.runtime.bootstrap import (
     read_runtime_status,
     validate_config_file,
 )
+from flower_vending.runtime.discover import discover_arduino, format_discovery, list_com_ports
+from flower_vending.runtime.production import build_production_environment
 from flower_vending.simulators.scenarios.catalog import run_default_scenario_suite
 
 
@@ -65,9 +67,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Maximum number of recent events to render.",
     )
 
+    clear_drift_parser = subparsers.add_parser("clear-drift", help="Clear the drift_detected flag on money inventory.")
+    add_config_argument(clear_drift_parser)
+
     service_parser = subparsers.add_parser("service", help="Enter service mode and print a service snapshot.")
     add_config_argument(service_parser)
     service_parser.add_argument("--operator", default="technician", help="Service operator identifier.")
+    service_parser.add_argument("--pin", default="0000", help="4-digit service PIN.")
+    service_parser.add_argument(
+        "--lock-purchase",
+        action="store_true",
+        help="Lock purchase button in service mode.",
+    )
     service_parser.add_argument(
         "--action",
         action="append",
@@ -140,6 +151,39 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Render the command output as JSON.",
     )
+
+    discover_parser = subparsers.add_parser("discover", help="Discover COM ports and connected hardware.")
+    discover_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Render the command output as JSON.",
+    )
+
+    run_parser = subparsers.add_parser("run", help="Start production runtime with real hardware.")
+    add_config_argument(run_parser)
+    run_parser.add_argument(
+        "--duration",
+        type=float,
+        default=0.0,
+        help="Keep running for N seconds then exit (0 = forever until Ctrl+C).",
+    )
+    run_parser.add_argument(
+        "--no-ui",
+        action="store_true",
+        help="Run without UI (headless mode).",
+    )
+
+    printer_parser = subparsers.add_parser("printer-test", help="Print a test receipt.")
+    printer_parser.add_argument("--port", help="Printer COM port (auto-discover if omitted).")
+    printer_parser.add_argument("--baudrate", type=int, default=19200, help="Printer baud rate.")
+
+    analyze_parser = subparsers.add_parser(
+        "dbv300sd-analyze",
+        help="Analyze DBV-300-SD protocol by probing different frame formats.",
+    )
+    analyze_parser.add_argument("--port", required=True, help="Serial port (e.g. COM3).")
+    analyze_parser.add_argument("--timeout", type=float, default=0.5, help="Per-probe timeout.")
+    analyze_parser.add_argument("--read-size", type=int, default=32, help="Bytes to read per probe.")
     return parser
 
 
@@ -155,6 +199,8 @@ def main(argv: list[str] | None = None) -> int:
         return _command_status(args)
     if args.command == "events":
         return _command_events(args)
+    if args.command == "clear-drift":
+        return asyncio.run(_command_clear_drift(args))
     if args.command == "service":
         return asyncio.run(_command_service(args))
     if args.command == "simulator-runtime":
@@ -165,6 +211,14 @@ def main(argv: list[str] | None = None) -> int:
         return run_simulator_ui(config_path=args.config, reset_state=args.reset_state)
     if args.command == "dbv300sd-serial-smoke":
         return asyncio.run(_command_dbv300sd_serial_smoke(args, parser))
+    if args.command == "discover":
+        return asyncio.run(_command_discover(args))
+    if args.command == "run":
+        return asyncio.run(_command_run(args))
+    if args.command == "printer-test":
+        return asyncio.run(_command_printer_test(args))
+    if args.command == "dbv300sd-analyze":
+        return asyncio.run(_command_dbv300sd_analyze(args))
     parser.error(f"unsupported command: {args.command}")
 
 
@@ -229,19 +283,62 @@ def _command_events(args: argparse.Namespace) -> int:
 
 
 async def _command_service(args: argparse.Namespace) -> int:
+    from flower_vending.runtime.bootstrap import validate_config_file
+    config, _, _ = validate_config_file(args.config)
+    pin = config.machine.service_mode.pin
+
     environment = await build_simulator_environment(config_path=args.config, prepare_directories=True)
     await environment.start()
     try:
+        cid = environment.ui_facade.new_correlation_id()
+        try:
+            await environment.ui_facade.enter_service_mode(
+                operator_id=args.operator, correlation_id=cid, pin=args.pin or pin,
+            )
+        except ValueError:
+            print("Error: Invalid service PIN")
+            return 1
+
+        if args.lock_purchase:
+            await environment.ui_facade.lock_purchase_button(
+                operator_id=args.operator, locked=True, correlation_id=cid,
+            )
+
         for action_id in args.action:
             await environment.simulator_controls.execute_action(
-                action_id,
-                correlation_id=environment.ui_facade.new_correlation_id(),
+                action_id, correlation_id=cid,
             )
-        payload = await environment.service_report(operator_id=args.operator)
+
+        d = environment.ui_facade.diagnostics_snapshot()
+        payload = {
+            "operator_id": args.operator,
+            "machine_state": d.machine.machine_state,
+            "sale_blockers": list(d.machine.sale_blockers),
+            "unresolved_transaction_ids": list(d.unresolved_transaction_ids),
+            "recent_events": [
+                {"event_type": e.event_type, "correlation_id": e.correlation_id, "summary": str(e.summary)}
+                for e in d.recent_events
+            ],
+        }
         if args.json:
             print(json.dumps(payload, ensure_ascii=False, indent=2))
         else:
             print(_format_service(payload))
+        return 0
+    finally:
+        await environment.stop()
+
+
+async def _command_clear_drift(args: argparse.Namespace) -> int:
+    environment = await build_simulator_environment(config_path=args.config, prepare_directories=True)
+    await environment.start()
+    try:
+        environment.ui_facade.clear_drift()
+        payload = {"drift_detected": False}
+        if args.json:
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+        else:
+            print("Drift flag cleared.")
         return 0
     finally:
         await environment.stop()
@@ -275,6 +372,73 @@ async def _command_simulator_runtime(args: argparse.Namespace) -> int:
         return 0
     finally:
         await environment.stop()
+
+
+async def _command_run(args: argparse.Namespace) -> int:
+
+    environment = await build_production_environment(config_path=args.config, prepare_directories=True)
+    await environment.start()
+    try:
+        payload = environment.diagnostics_report()
+        print("=== Production Runtime Started ===")
+        print(f"State: {payload['machine']['machine_state']}")
+        for device in payload["devices"]:
+            print(f"  {device['device_name']}: {device['state']}")
+        if payload["machine"]["sale_blockers"]:
+            print(f"Blockers: {', '.join(payload['machine']['sale_blockers'])}")
+        if not args.no_ui:
+            print("Production UI handoff is not available in this build, running headless.")
+        if args.duration > 0:
+            await asyncio.sleep(args.duration)
+        else:
+            print("Running... Press Ctrl+C to stop.")
+            while True:
+                await asyncio.sleep(3600)
+        return 0
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        await environment.stop()
+
+
+async def _command_printer_test(args: argparse.Namespace) -> int:
+    from flower_vending.devices.printer import PrinterAdapter, PrinterAdapterConfig
+
+    config = PrinterAdapterConfig(port=args.port or "", baudrate=args.baudrate)
+    printer = PrinterAdapter(config)
+    try:
+        await printer.connect()
+        await printer.print_test()
+        print("Test receipt printed successfully.")
+        return 0
+    except Exception as exc:
+        print(f"Printer test failed: {exc}")
+        return 1
+    finally:
+        await printer.disconnect()
+
+
+async def _command_dbv300sd_analyze(args: argparse.Namespace) -> int:
+    from flower_vending.devices.dbv300sd.analyzer import analyze_port, format_analysis
+
+    print(f"Analyzing {args.port}... (this may take a minute)")
+    results = await analyze_port(args.port, read_size=args.read_size, timeout_s=args.timeout)
+    print(format_analysis(results))
+    return 0
+
+
+async def _command_discover(args: argparse.Namespace) -> int:
+    result = await discover_arduino()
+    ports = list_com_ports()
+    payload = {
+        "esp32": result,
+        "available_ports": ports,
+    }
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print(format_discovery(result))
+    return 0
 
 
 async def _command_dbv300sd_serial_smoke(

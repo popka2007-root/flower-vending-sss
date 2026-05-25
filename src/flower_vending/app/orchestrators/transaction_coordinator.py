@@ -1,4 +1,10 @@
-"""Transaction registry and coordination helper."""
+"""Transaction registry and coordination helper.
+
+Thread-safety note: This coordinator runs inside a single asyncio event loop,
+so coroutine interleaving only happens at await points. All current methods
+are synchronous (no I/O) and thus naturally atomic within the loop.
+If a future change adds async I/O to any method, add asyncio.Lock.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +18,11 @@ from flower_vending.domain.value_objects import (
     SlotId,
     TransactionId,
 )
+
+# FIX: Terminal states that allow a new transaction to replace the active one.
+# Prevents ConcurrencyConflictError when confirm_pickup() completes a transaction
+# but clear_active() hasn't run yet (see E2).
+_TERMINAL_STATUSES = {TransactionStatus.COMPLETED, TransactionStatus.CANCELLED}
 
 
 class TransactionCoordinator:
@@ -28,8 +39,15 @@ class TransactionCoordinator:
         price_minor_units: int,
         currency: str = "RUB",
     ) -> Transaction:
+        # FIX: Check if existing active transaction is terminal before rejecting.
+        # This closes the race window between mark_window_closed() and
+        # clear_active() in VendingController.confirm_pickup() (see A4, E2).
         if self._active_transaction_id is not None:
-            raise ConcurrencyConflictError("a transaction is already active")
+            existing = self._transactions.get(self._active_transaction_id)
+            if existing is not None and existing.status in _TERMINAL_STATUSES:
+                self._active_transaction_id = None
+            else:
+                raise ConcurrencyConflictError("a transaction is already active")
         transaction = Transaction(
             transaction_id=TransactionId.new(),
             correlation_id=CorrelationId(correlation_id),
@@ -61,17 +79,18 @@ class TransactionCoordinator:
         *,
         active_transaction_id: str | None = None,
     ) -> None:
+        # FIX: Validate active_transaction_id exists in restored set to
+        # prevent silent None returns from active() (see E1).
         self._transactions = {
             transaction.transaction_id.value: transaction for transaction in transactions
         }
         if active_transaction_id is not None:
-            self._active_transaction_id = active_transaction_id
+            self._active_transaction_id = (
+                active_transaction_id if active_transaction_id in self._transactions else None
+            )
             return
         for transaction in transactions:
-            if transaction.status not in {
-                TransactionStatus.COMPLETED,
-                TransactionStatus.CANCELLED,
-            }:
+            if transaction.status not in _TERMINAL_STATUSES:
                 self._active_transaction_id = transaction.transaction_id.value
                 return
         self._active_transaction_id = None

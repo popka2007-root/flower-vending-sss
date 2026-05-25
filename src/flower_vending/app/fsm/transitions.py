@@ -47,6 +47,7 @@ ALLOWED_TRANSITIONS: dict[MachineState, set[MachineState]] = {
         MachineState.FAULT,
         MachineState.OUT_OF_SERVICE,
         MachineState.RECOVERY_PENDING,
+        MachineState.REFUND,
     },
     MachineState.PAYMENT_ACCEPTED: {
         MachineState.DISPENSING_CHANGE,
@@ -63,6 +64,7 @@ ALLOWED_TRANSITIONS: dict[MachineState, set[MachineState]] = {
         MachineState.OPENING_DELIVERY_WINDOW,
         MachineState.FAULT,
         MachineState.RECOVERY_PENDING,
+        MachineState.REFUND,
     },
     MachineState.OPENING_DELIVERY_WINDOW: {
         MachineState.WAITING_FOR_CUSTOMER_PICKUP,
@@ -80,13 +82,14 @@ ALLOWED_TRANSITIONS: dict[MachineState, set[MachineState]] = {
         MachineState.RECOVERY_PENDING,
     },
     MachineState.COMPLETED: {MachineState.IDLE, MachineState.OUT_OF_SERVICE},
-    MachineState.CANCELLED: {MachineState.IDLE, MachineState.OUT_OF_SERVICE},
+    MachineState.CANCELLED: {MachineState.IDLE, MachineState.OUT_OF_SERVICE, MachineState.REFUND},
     MachineState.OUT_OF_SERVICE: {
         MachineState.SERVICE_MODE,
         MachineState.IDLE,
         MachineState.RECOVERY_PENDING,
     },
     MachineState.FAULT: {
+        MachineState.IDLE,
         MachineState.OUT_OF_SERVICE,
         MachineState.SERVICE_MODE,
         MachineState.RECOVERY_PENDING,
@@ -95,6 +98,19 @@ ALLOWED_TRANSITIONS: dict[MachineState, set[MachineState]] = {
         MachineState.OUT_OF_SERVICE,
         MachineState.IDLE,
         MachineState.FAULT,
+        MachineState.RECOVERY_PENDING,
+    },
+    MachineState.REFUND: {
+        MachineState.CANCELLED,
+        MachineState.MANUAL_REVIEW,
+        MachineState.FAULT,
+        MachineState.RECOVERY_PENDING,
+    },
+    MachineState.MANUAL_REVIEW: {
+        MachineState.IDLE,
+        MachineState.OUT_OF_SERVICE,
+        MachineState.FAULT,
+        MachineState.SERVICE_MODE,
         MachineState.RECOVERY_PENDING,
     },
     MachineState.RECOVERY_PENDING: {

@@ -267,4 +267,5 @@ def transaction_from_row(
         change_reserve=change_reserve_from_json(change_reserve_json),
         created_at=_parse_iso(row["created_at"]) or _now(),
         updated_at=_parse_iso(row["updated_at"]) or _now(),
+        _cancelled=TransactionStatus(row["status"]) is TransactionStatus.CANCELLED,
     )

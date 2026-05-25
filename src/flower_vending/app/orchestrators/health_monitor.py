@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Mapping
 from datetime import datetime, timezone
 
@@ -12,6 +13,11 @@ from flower_vending.devices.interfaces import DoorSensor, ManagedDevice, Tempera
 from flower_vending.domain.entities import DeviceHealthSnapshot
 from flower_vending.domain.events.machine_events import machine_event
 from flower_vending.domain.value_objects import DeviceState
+
+# FIX: Timeout for each device health check. If a device hangs (e.g. stuck
+# serial read on a disconnected DBV-300-SD), the health monitor loop would
+# block indefinitely and never kick the watchdog (see E7).
+_DEVICE_HEALTH_TIMEOUT_S: float = 5.0
 
 
 class HealthMonitor:
@@ -24,6 +30,7 @@ class HealthMonitor:
         door_sensor: DoorSensor | None = None,
         temperature_sensor: TemperatureSensor | None = None,
         critical_temperature_celsius: float = 8.0,
+        device_health_timeout_s: float = _DEVICE_HEALTH_TIMEOUT_S,
     ) -> None:
         self._devices = devices
         self._machine_status_service = machine_status_service
@@ -31,6 +38,7 @@ class HealthMonitor:
         self._door_sensor = door_sensor
         self._temperature_sensor = temperature_sensor
         self._critical_temperature_celsius = critical_temperature_celsius
+        self._device_health_timeout_s = device_health_timeout_s
         self._snapshot = DeviceHealthSnapshot()
 
     @property
@@ -42,7 +50,16 @@ class HealthMonitor:
         state_map: dict[str, DeviceState] = {}
         now_iso = datetime.now(tz=timezone.utc).isoformat()
         for name, device in self._devices.items():
-            health = await device.get_health()
+            try:
+                health = await asyncio.wait_for(
+                    device.get_health(),
+                    timeout=self._device_health_timeout_s,
+                )
+            except asyncio.TimeoutError:
+                state = DeviceState.FAULT
+                state_map[name] = state
+                faults.append(f"{name}_timeout")
+                continue
             state = DeviceState(health.state.value)
             state_map[name] = state
             if health.state in {
@@ -51,6 +68,17 @@ class HealthMonitor:
                 DeviceOperationalState.OUT_OF_SERVICE,
             }:
                 faults.append(name)
+        for name in self._devices:
+            key = f"device_fault:{name}"
+            device_state = state_map.get(name, DeviceState.FAULT)
+            if device_state in {
+                DeviceState.FAULT,
+                DeviceState.RECOVERY_PENDING,
+                DeviceState.OUT_OF_SERVICE,
+            }:
+                self._machine_status_service.block_sales(key)
+            else:
+                self._machine_status_service.unblock_sales(key)
         self._snapshot = DeviceHealthSnapshot(
             validator_state=state_map.get("validator", DeviceState.UNKNOWN),
             change_dispenser_state=state_map.get("change_dispenser", DeviceState.UNKNOWN),
@@ -65,12 +93,9 @@ class HealthMonitor:
             faults=faults,
         )
         if faults:
-            self._machine_status_service.block_sales("device_fault")
             await self._event_bus.publish(
                 machine_event("machine_faulted", correlation_id=correlation_id, faults=faults)
             )
-        else:
-            self._machine_status_service.unblock_sales("device_fault")
 
         if self._door_sensor is not None:
             door = await self._door_sensor.read_service_door()

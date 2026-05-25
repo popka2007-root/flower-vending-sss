@@ -106,6 +106,10 @@ class MotorController(ManagedDevice):
     async def stop_motion(self) -> None:
         """Stop motion as safely as the device allows."""
 
+    @abstractmethod
+    async def start_motion(self) -> None:
+        """Start continuous motion (display rotation / showcase mode)."""
+
 
 class CoolingController(ManagedDevice):
     """Contract for compressor or cooling control."""

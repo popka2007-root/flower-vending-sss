@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from flower_vending.app import ApplicationCore, build_application_core
 from flower_vending.app.fsm import MachineState, StateTransitionRecord
@@ -13,9 +13,15 @@ from flower_vending.domain.entities import MoneyInventory, Product, Slot, Transa
 from flower_vending.domain.events import DomainEvent
 from flower_vending.domain.exceptions import ManualInterventionRequiredError
 from flower_vending.domain.value_objects import Amount, Currency, ProductId, SlotId
+from flower_vending.app.logging import ApplicationLogger
 from flower_vending.infrastructure.config.loader import build_device_settings_snapshot, load_machine_config
 from flower_vending.infrastructure.config.models import AppConfig, CatalogSeedItemConfig, SimulatorFaultConfig
-from flower_vending.infrastructure.logging.setup import StructuredLoggerAdapter, close_logging, configure_logging
+from flower_vending.infrastructure.logging.setup import (
+    StructuredLoggerAdapter,
+    close_logging,
+    configure_logging,
+    set_log_context,
+)
 from flower_vending.infrastructure.persistence.journal import SQLiteTransactionJournal
 from flower_vending.infrastructure.persistence.sqlite import (
     AppliedConfigRepository,
@@ -49,9 +55,54 @@ from flower_vending.simulators.devices import (
 from flower_vending.simulators.faults import SimulatorFaultCode
 from flower_vending.simulators.scenarios.catalog import SCENARIO_REGISTRY
 from flower_vending.ui.facade import UiApplicationFacade
+from flower_vending.devices.arduino import (
+    ArduinoDoorSensor,
+    ArduinoMotorController,
+    ArduinoPositionSensor,
+    ArduinoSerialTransport,
+    ArduinoTemperatureSensor,
+    ArduinoWindowController,
+)
+from flower_vending.devices.dbv300sd.adapter import build_dbv300sd_validator
+from flower_vending.devices.dbv300sd.config import (
+    DBV300ProtocolKind,
+    DBV300SDValidatorConfig,
+    DBV300TransportKind,
+    SerialTransportSettings,
+)
+from flower_vending.devices.interfaces import (
+    BillValidator,
+    ChangeDispenser,
+    DoorSensor,
+    ManagedDevice,
+    MotorController,
+    PositionSensor,
+    TemperatureSensor,
+    WatchdogAdapter,
+    WindowController,
+)
 
 
 Severity = Literal["info", "warning", "error"]
+
+PERSISTENCE_EVENT_TYPES: tuple[str, ...] = (
+    "transaction_completed",
+    "transaction_cancelled",
+    "payment_confirmed",
+    "machine_faulted",
+    "critical_temperature_detected",
+    "service_door_opened",
+    "service_mode_entered",
+    "service_mode_exited",
+    "refund_dispensed",
+    "refund_failed",
+    "change_dispensed",
+    "product_dispensed",
+    "pickup_timeout_elapsed",
+    "recovery_started",
+    "delivery_window_opened",
+    "pickup_confirmed",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,7 +194,7 @@ class SimulatorRuntimeEnvironment:
     config_path: Path
     project_root: Path
     report: BootstrapReport
-    logger: StructuredLoggerAdapter
+    logger: ApplicationLogger
     repositories: RuntimeRepositories
     devices: SimulatorDevices
     inventory_service: InventoryService
@@ -178,7 +229,7 @@ class SimulatorRuntimeEnvironment:
     async def stop(self) -> None:
         if not self._started:
             self.repositories.database.close()
-            close_logging(self.logger)
+            close_logging(cast(StructuredLoggerAdapter, self.logger))
             return
         self.logger.info("runtime_stopping", extra={"machine_state": self.core.fsm.current_state.value})
         await self.core.stop_runtime()
@@ -186,7 +237,7 @@ class SimulatorRuntimeEnvironment:
             await device.stop()
         self._persist_runtime_snapshot()
         self.repositories.database.close()
-        close_logging(self.logger)
+        close_logging(cast(StructuredLoggerAdapter, self.logger))
         self._started = False
 
     def diagnostics_report(self) -> dict[str, Any]:
@@ -219,6 +270,7 @@ class SimulatorRuntimeEnvironment:
             await self.ui_facade.enter_service_mode(
                 operator_id=operator_id,
                 correlation_id=correlation_id,
+                pin=self.config.machine.service_mode.pin,
             )
         except ManualInterventionRequiredError:
             pass
@@ -280,13 +332,21 @@ class SimulatorRuntimeEnvironment:
         await self.core.health_monitor.poll_once(correlation_id="startup-self-test")
 
     def _persist_runtime_snapshot(self) -> None:
-        self.repositories.machine_status.save(
-            self.core.machine_status_service.runtime.status,
-            machine_id=self.config.machine.machine_id,
-        )
-        self.repositories.money_inventory.save(self.money_inventory)
-        for transaction in _transactions_to_persist(self.core):
-            self.repositories.transactions.save(transaction)
+        with self.repositories.database.transaction() as connection:
+            self.repositories.machine_status.save(
+                self.core.machine_status_service.runtime.status,
+                machine_id=self.config.machine.machine_id,
+                _connection=connection,
+            )
+            self.repositories.money_inventory.save(
+                self.money_inventory,
+                _connection=connection,
+            )
+            for transaction in _transactions_to_persist(self.core):
+                self.repositories.transactions.save(
+                    transaction,
+                    _connection=connection,
+                )
 
 
 class RuntimePersistenceProjector:
@@ -297,7 +357,7 @@ class RuntimePersistenceProjector:
         config: AppConfig,
         core: ApplicationCore,
         money_inventory: MoneyInventory,
-        logger: StructuredLoggerAdapter,
+        logger: ApplicationLogger,
     ) -> None:
         self._repositories = repositories
         self._config = config
@@ -311,18 +371,21 @@ class RuntimePersistenceProjector:
             if event.transaction_id is not None
             else self._core.transaction_coordinator.active()
         )
-        for persisted in _transactions_to_persist(self._core, primary=transaction):
-            self._repositories.transactions.save(persisted)
-        self._repositories.machine_status.save(
-            self._core.machine_status_service.runtime.status,
-            machine_id=self._config.machine.machine_id,
-        )
-        self._repositories.money_inventory.save(self._money_inventory)
-        self._repositories.journal.append_event(
-            event,
-            machine_state=self._core.fsm.current_state.value,
-            transaction_status=(transaction.status.value if transaction is not None else None),
-        )
+        with self._repositories.database.transaction() as connection:
+            for persisted in _transactions_to_persist(self._core, primary=transaction):
+                self._repositories.transactions.save(persisted, _connection=connection)
+            self._repositories.machine_status.save(
+                self._core.machine_status_service.runtime.status,
+                machine_id=self._config.machine.machine_id,
+                _connection=connection,
+            )
+            self._repositories.money_inventory.save(self._money_inventory, _connection=connection)
+            self._repositories.journal.append_event(
+                event,
+                machine_state=self._core.fsm.current_state.value,
+                transaction_status=(transaction.status.value if transaction is not None else None),
+                _connection=connection,
+            )
         if event.event_type in {"service_mode_entered", "service_mode_exited"}:
             self._repositories.operational_events.record_service_event(
                 event_type=event.event_type,
@@ -338,10 +401,11 @@ class RuntimePersistenceProjector:
                 correlation_id=event.correlation_id,
                 details=dict(event.payload),
             )
-        self._logger.bind(
+        set_log_context(
             correlation_id=event.correlation_id,
             transaction_id=event.transaction_id,
-        ).info(
+        )
+        self._logger.info(
             "domain_event",
             extra={
                 "event_type": event.event_type,
@@ -354,10 +418,11 @@ class RuntimePersistenceProjector:
         active_transaction = self._core.transaction_coordinator.active()
         correlation_id = active_transaction.correlation_id.value if active_transaction is not None else None
         transaction_id = active_transaction.transaction_id.value if active_transaction is not None else None
-        self._logger.bind(
+        set_log_context(
             correlation_id=correlation_id,
             transaction_id=transaction_id,
-        ).info(
+        )
+        self._logger.info(
             "fsm_transition",
             extra={
                 "previous_state": record.previous_state.value,
@@ -675,6 +740,8 @@ async def build_simulator_environment(
         watchdog_timeout_s=config.runtime.watchdog_timeout_s,
         pickup_timeout_s=config.machine.policies.pickup_timeout_s,
         journal=repositories.journal,
+        service_pin=config.machine.service_mode.pin,
+        idle_timeout_s=config.machine.policies.idle_timeout_s,
     )
     event_store = RecentEventStore(limit=config.runtime.event_log_limit)
     projector = RuntimePersistenceProjector(
@@ -685,7 +752,8 @@ async def build_simulator_environment(
         logger=logger,
     )
     core.event_bus.subscribe_best_effort("*", event_store.handle)
-    core.event_bus.subscribe_critical("*", projector.handle_domain_event)
+    for event_type in PERSISTENCE_EVENT_TYPES:
+        core.event_bus.subscribe_critical(event_type, projector.handle_domain_event)
     core.fsm.subscribe(projector.handle_transition)
 
     simulator_controls = SimulatorControlService(
@@ -706,6 +774,8 @@ async def build_simulator_environment(
         event_store=event_store,
         simulator_controls=simulator_controls,
         platform_profile=report.platform_profile,
+        repositories=repositories,
+        machine_id=config.machine.machine_id,
     )
     return SimulatorRuntimeEnvironment(
         config=config,
@@ -850,6 +920,128 @@ def _build_simulator_devices(
             command_policy=config.devices.inventory_sensor.policy.to_runtime_policy(),
         ),
         position_sensor=MockPositionSensor(
+            name=config.devices.position_sensor.device_name,
+            command_policy=config.devices.position_sensor.policy.to_runtime_policy(),
+        ),
+        watchdog=MockWatchdogAdapter(
+            name=config.platform.watchdog.adapter,
+            command_policy=config.platform.watchdog.policy.to_runtime_policy(),
+        ),
+    )
+
+
+@dataclass(slots=True)
+class ProductionDevices:
+    validator: BillValidator
+    change_dispenser: ChangeDispenser
+    motor_controller: MotorController
+    window_controller: WindowController
+    temperature_sensor: TemperatureSensor
+    door_sensor: DoorSensor
+    position_sensor: PositionSensor
+    watchdog: WatchdogAdapter
+
+    def managed(self) -> dict[str, ManagedDevice]:
+        return {
+            "validator": self.validator,
+            "change_dispenser": self.change_dispenser,
+            "motor": self.motor_controller,
+            "window": self.window_controller,
+            "temperature": self.temperature_sensor,
+            "door": self.door_sensor,
+            "position": self.position_sensor,
+            "watchdog": self.watchdog,
+        }
+
+    def startup_order(self) -> tuple[ManagedDevice, ...]:
+        return (
+            self.validator,
+            self.change_dispenser,
+            self.motor_controller,
+            self.window_controller,
+            self.temperature_sensor,
+            self.door_sensor,
+            self.position_sensor,
+            self.watchdog,
+        )
+
+
+def _resolve_port(raw_port: str) -> str:
+    if raw_port and raw_port.upper() != "AUTO":
+        return raw_port
+    from flower_vending.runtime.discover import find_esp32_port, find_jcm_port
+
+    jcm = find_jcm_port()
+    if jcm:
+        return jcm
+    esp = find_esp32_port()
+    if esp:
+        return esp
+    return ""
+
+
+def _build_production_devices(config: AppConfig) -> ProductionDevices:
+    serial = config.devices.bill_validator.serial
+    bv_port = _resolve_port(serial.port) if serial is not None else ""
+    bv_settings = SerialTransportSettings(
+        port=bv_port,
+        baudrate=serial.baudrate if serial else 9600,
+        bytesize=serial.bytesize if serial else 8,
+        parity=serial.parity if serial else "N",
+        stopbits=serial.stopbits if serial else 1,
+        read_timeout_s=serial.read_timeout_s if serial else 0.2,
+        write_timeout_s=serial.write_timeout_s if serial else 0.2,
+    ) if serial else None
+
+    bv_config = DBV300SDValidatorConfig(
+        device_name=config.devices.bill_validator.device_name,
+        transport_kind=DBV300TransportKind(config.devices.bill_validator.transport_kind),
+        protocol_kind=DBV300ProtocolKind(config.devices.bill_validator.protocol_kind),
+        serial_transport=bv_settings,
+        poll_interval_s=config.devices.bill_validator.poll_interval_s,
+        startup_disable_acceptance=config.devices.bill_validator.startup_disable_acceptance,
+        fallback_disable_on_fault=config.devices.bill_validator.fallback_disable_on_fault,
+        accepted_denominations_minor=tuple(config.devices.bill_validator.accepted_denominations_minor),
+        command_policy=config.devices.bill_validator.policy.to_runtime_policy(),
+    )
+    validator = build_dbv300sd_validator(bv_config)
+
+    arduino_port = _resolve_port(config.devices.motor_controller.settings.get("port", "AUTO"))
+    arduino = ArduinoSerialTransport(
+        port=arduino_port,
+        baudrate=config.devices.motor_controller.settings.get("baudrate", 115200),
+    )
+
+    return ProductionDevices(
+        validator=validator,
+        change_dispenser=MockChangeDispenser(
+            name=config.devices.change_dispenser.device_name,
+            inventory={},
+            command_policy=config.devices.change_dispenser.policy.to_runtime_policy(),
+        ),
+        motor_controller=ArduinoMotorController(
+            transport=arduino,
+            name=config.devices.motor_controller.device_name,
+            command_policy=config.devices.motor_controller.policy.to_runtime_policy(),
+        ),
+        window_controller=ArduinoWindowController(
+            transport=arduino,
+            name=config.devices.window_controller.device_name,
+            pulse_ms=config.devices.window_controller.timeouts_ms.get("pulse", 700),
+            command_policy=config.devices.window_controller.policy.to_runtime_policy(),
+        ),
+        temperature_sensor=ArduinoTemperatureSensor(
+            transport=arduino,
+            name=config.devices.temperature_sensor.device_name,
+            command_policy=config.devices.temperature_sensor.policy.to_runtime_policy(),
+        ),
+        door_sensor=ArduinoDoorSensor(
+            transport=arduino,
+            name=config.devices.door_sensor.device_name,
+            command_policy=config.devices.door_sensor.policy.to_runtime_policy(),
+        ),
+        position_sensor=ArduinoPositionSensor(
+            transport=arduino,
             name=config.devices.position_sensor.device_name,
             command_policy=config.devices.position_sensor.policy.to_runtime_policy(),
         ),

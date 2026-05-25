@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import sqlite3
 from datetime import datetime, timezone
 from typing import Any
 
@@ -158,7 +159,13 @@ class MachineStatusRepository:
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
 
-    def save(self, status: MachineStatus, *, machine_id: str = "primary") -> None:
+    def save(
+        self,
+        status: MachineStatus,
+        *,
+        machine_id: str = "primary",
+        _connection: sqlite3.Connection | None = None,
+    ) -> None:
         record = machine_status_to_record(status, machine_id=machine_id, updated_at=_utc_now_iso())
         self._database.execute(
             """
@@ -201,6 +208,7 @@ class MachineStatusRepository:
                 "sale_blockers_json": self._database.dumps(record["sale_blockers_json"]),
                 "warnings_json": self._database.dumps(record["warnings_json"]),
             },
+            connection=_connection,
         )
 
     def get(self, *, machine_id: str = "primary") -> MachineStatus | None:
@@ -241,7 +249,13 @@ class MoneyInventoryRepository:
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
 
-    def save(self, inventory: MoneyInventory, *, inventory_id: str = "main") -> None:
+    def save(
+        self,
+        inventory: MoneyInventory,
+        *,
+        inventory_id: str = "main",
+        _connection: sqlite3.Connection | None = None,
+    ) -> None:
         record = money_inventory_to_record(inventory, inventory_id=inventory_id, updated_at=_utc_now_iso())
         self._database.execute(
             """
@@ -281,6 +295,7 @@ class MoneyInventoryRepository:
                 "accounting_counts_json": self._database.dumps(record["accounting_counts_json"]),
                 "reserved_counts_json": self._database.dumps(record["reserved_counts_json"]),
             },
+            connection=_connection,
         )
 
     def get(self, *, inventory_id: str = "main") -> MoneyInventory | None:
@@ -337,7 +352,12 @@ class TransactionRepository:
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
 
-    def save(self, transaction: Transaction) -> None:
+    def save(
+        self,
+        transaction: Transaction,
+        *,
+        _connection: sqlite3.Connection | None = None,
+    ) -> None:
         record = transaction_to_record(transaction)
         self._database.execute(
             """
@@ -412,6 +432,7 @@ class TransactionRepository:
                     else self._database.dumps(record["change_reserve_json"])
                 ),
             },
+            connection=_connection,
         )
 
     def get(self, transaction_id: str) -> Transaction | None:

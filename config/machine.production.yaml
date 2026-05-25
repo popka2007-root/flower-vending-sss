@@ -1,0 +1,351 @@
+machine:
+  machine_id: flower-vending-prod-01
+  currency: RUB
+  startup_state: SELF_TEST
+  policies:
+    critical_temperature_celsius: 8.0
+    pickup_timeout_s: 60.0
+  service_mode:
+    pin: "1234"
+    lock_purchase_button: false
+    visible_button: false
+  payment_methods:
+    cash: true
+    card: false
+    qr: false
+    sbp: false
+
+runtime:
+  health_poll_interval_s: 0.5
+  validator_event_timeout_s: 0.05
+  watchdog_timeout_s: 30.0
+  event_log_limit: 100
+  persist_applied_config: true
+  seed_demo_data: true
+
+ui:
+  window_title: 🌺 ЭКСПРЕСС БУКЕТ
+  kiosk_fullscreen: true
+
+catalog:
+  items:
+    - product_id: roses_ecuador_7
+      slot_id: A1
+      name: roses_ecuador_7
+      display_name: Розы Эквадор 7 шт.
+      category: roses
+      price_minor_units: 249000
+      quantity: 4
+      capacity: 8
+      is_bouquet: false
+      enabled: true
+      temperature_profile: cooled
+      metadata:
+        short_description: Классические крупные розы в лаконичной упаковке.
+        image_path: products/roses-ecuador-7.jpg
+        freshness_note: Собран сегодня
+        size_label: 7 стеблей
+    - product_id: white_tulips_9
+      slot_id: A2
+      name: white_tulips_9
+      display_name: Тюльпаны белые 9 шт.
+      category: tulips
+      price_minor_units: 199000
+      quantity: 3
+      capacity: 8
+      is_bouquet: false
+      enabled: true
+      temperature_profile: cooled
+      metadata:
+        short_description: Светлый весенний букет
+        image_path: products/white-tulips-9.jpg
+        freshness_note: Поставка утро
+        size_label: 9 стеблей
+    - product_id: gentle_mix
+      slot_id: B1
+      name: gentle_mix
+      display_name: Нежный микс
+      category: bouquets
+      price_minor_units: 299000
+      quantity: 3
+      capacity: 6
+      is_bouquet: true
+      enabled: true
+      temperature_profile: cooled
+    - product_id: compliment_bouquet
+      slot_id: B2
+      name: compliment_bouquet
+      display_name: Букет комплимент
+      category: gift
+      price_minor_units: 149000
+      quantity: 5
+      capacity: 6
+      is_bouquet: true
+      enabled: true
+      temperature_profile: cooled
+    - product_id: peony_roses
+      slot_id: C1
+      name: peony_roses
+      display_name: Пионовидные розы
+      category: roses
+      price_minor_units: 349000
+      quantity: 1
+      capacity: 4
+      is_bouquet: true
+      enabled: true
+      temperature_profile: cooled
+    - product_id: seasonal_bouquet
+      slot_id: C2
+      name: seasonal_bouquet
+      display_name: Сезонный букет
+      category: seasonal
+      price_minor_units: 249000
+      quantity: 2
+      capacity: 5
+      is_bouquet: true
+      enabled: true
+      temperature_profile: cooled
+
+persistence:
+  sqlite_path: var/data/flower_vending.db
+  busy_timeout_ms: 5000
+  enable_wal: true
+  synchronous: FULL
+
+logging:
+  level: INFO
+  directory: var/log
+  filename: flower_vending.jsonl
+  json: true
+  stderr: true
+  rotation:
+    max_bytes: 10485760
+    backup_count: 7
+
+platform:
+  target_os: windows
+  kiosk_mode: false
+  autostart_mode: none
+  watchdog:
+    enabled: false
+    adapter: simulator
+    policy:
+      timeout_s: 5.0
+      retry_count: 2
+      retryable_faults: [command_timeout, transient_command_failure, communication_error]
+      non_retryable_faults:
+        - ambiguous_physical_result
+        - physical_state_mismatch
+        - reconciliation_required
+        - unsupported_operation
+        - configuration_error
+      require_manual_review_on_ambiguous_result: true
+    settings: {}
+
+simulator:
+  enabled: false
+  startup_scenario:
+  scenario_suite: []
+  accepted_bill_denominations_minor: [10000, 50000, 100000, 200000, 500000]
+  quick_insert_bill_denominations_minor: [10000, 50000, 100000, 200000, 500000]
+  change_inventory:
+    100000: 10
+    50000: 10
+    10000: 20
+    5000: 20
+    1000: 50
+  initial_temperature_celsius: 4.0
+  initial_service_door_open: false
+  initial_inventory_presence: true
+  initial_inventory_confidence: 1.0
+  initial_faults: []
+
+devices:
+  bill_validator:
+    enabled: true
+    driver: dbv300sd
+    device_name: jcm_dbv300sd
+    transport_kind: serial
+    protocol_kind: serial
+    poll_interval_s: 0.2
+    startup_disable_acceptance: true
+    fallback_disable_on_fault: true
+    requires_hardware_confirmation: false
+    accepted_denominations_minor: [10000, 50000, 100000, 200000, 500000]
+    policy:
+      timeout_s: 3.0
+      retry_count: 1
+      retryable_faults: [command_timeout, transient_command_failure, communication_error]
+      non_retryable_faults:
+        - ambiguous_physical_result
+        - physical_state_mismatch
+        - reconciliation_required
+        - unsupported_operation
+        - configuration_error
+      require_manual_review_on_ambiguous_result: true
+    serial:
+      port: AUTO
+      baudrate: 9600
+      bytesize: 8
+      parity: N
+      stopbits: 1
+      read_timeout_s: 0.3
+      write_timeout_s: 0.3
+
+  change_dispenser:
+    enabled: true
+    driver: mock
+    device_name: change_dispenser
+    mapping: payout_main
+    timeouts_ms:
+      dispense: 100
+    policy:
+      timeout_s: 3.0
+      retry_count: 1
+      retryable_faults: [command_timeout, transient_command_failure, communication_error]
+      non_retryable_faults:
+        - ambiguous_physical_result
+        - physical_state_mismatch
+        - reconciliation_required
+        - unsupported_operation
+        - configuration_error
+      require_manual_review_on_ambiguous_result: true
+    settings: {}
+    requires_hardware_confirmation: false
+
+  cooling_controller:
+    enabled: true
+    driver: mock
+    device_name: cooling
+    mapping: cooling
+    timeouts_ms:
+      command: 100
+    policy:
+      timeout_s: 1.0
+      retry_count: 0
+      retryable_faults: [command_timeout]
+      non_retryable_faults: [unsupported_operation, configuration_error]
+      require_manual_review_on_ambiguous_result: true
+    settings: {}
+    requires_hardware_confirmation: false
+
+  motor_controller:
+    enabled: true
+    driver: arduino
+    device_name: arduino_motor
+    mapping: vend_motor
+    timeouts_ms:
+      vend: 3000
+      home: 5000
+    policy:
+      timeout_s: 5.0
+      retry_count: 1
+      retryable_faults: [command_timeout, transient_command_failure, communication_error]
+      non_retryable_faults:
+        - ambiguous_physical_result
+        - physical_state_mismatch
+        - reconciliation_required
+        - unsupported_operation
+        - configuration_error
+      require_manual_review_on_ambiguous_result: true
+    settings:
+      port: AUTO
+      baudrate: 115200
+    requires_hardware_confirmation: false
+
+  window_controller:
+    enabled: true
+    driver: arduino
+    device_name: arduino_window
+    mapping: delivery_window
+    timeouts_ms:
+      open: 5000
+      close: 5000
+      pulse: 700
+    policy:
+      timeout_s: 5.0
+      retry_count: 1
+      retryable_faults: [command_timeout, transient_command_failure]
+      non_retryable_faults: [physical_state_mismatch, unsupported_operation]
+      require_manual_review_on_ambiguous_result: true
+    settings:
+      port: AUTO
+      baudrate: 115200
+    requires_hardware_confirmation: false
+
+  payment_terminal:
+    enabled: false
+    driver: mock
+    device_name: payment_terminal
+    port: ""
+    baudrate: 9600
+    timeout_s: 30.0
+    settings: {}
+
+  temperature_sensor:
+    enabled: true
+    driver: mock
+    device_name: temperature
+    mapping: temperature_1
+    timeouts_ms:
+      read: 100
+    policy:
+      timeout_s: 1.0
+      retry_count: 0
+      retryable_faults: [command_timeout]
+      non_retryable_faults: [unsupported_operation, configuration_error]
+      require_manual_review_on_ambiguous_result: true
+    settings: {}
+    requires_hardware_confirmation: false
+
+  door_sensor:
+    enabled: true
+    driver: arduino
+    device_name: arduino_door
+    mapping: service_door
+    timeouts_ms:
+      read: 100
+    policy:
+      timeout_s: 2.0
+      retry_count: 1
+      retryable_faults: [command_timeout, transient_command_failure]
+      non_retryable_faults: [unsupported_operation, configuration_error]
+      require_manual_review_on_ambiguous_result: true
+    settings:
+      port: AUTO
+      baudrate: 115200
+    requires_hardware_confirmation: false
+
+  inventory_sensor:
+    enabled: true
+    driver: mock
+    device_name: inventory
+    mapping: slot_presence
+    timeouts_ms:
+      read: 100
+    policy:
+      timeout_s: 1.0
+      retry_count: 0
+      retryable_faults: [command_timeout]
+      non_retryable_faults: [unsupported_operation, configuration_error]
+      require_manual_review_on_ambiguous_result: true
+    settings: {}
+    requires_hardware_confirmation: false
+
+  position_sensor:
+    enabled: true
+    driver: arduino
+    device_name: arduino_position
+    mapping: drum_position
+    timeouts_ms:
+      read: 100
+    policy:
+      timeout_s: 2.0
+      retry_count: 1
+      retryable_faults: [command_timeout, transient_command_failure]
+      non_retryable_faults: [unsupported_operation, configuration_error]
+      require_manual_review_on_ambiguous_result: true
+    settings:
+      port: AUTO
+      baudrate: 115200
+    requires_hardware_confirmation: false

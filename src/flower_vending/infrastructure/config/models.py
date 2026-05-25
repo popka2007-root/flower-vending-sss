@@ -21,6 +21,34 @@ class StrictModel(BaseModel):
 class MachinePoliciesConfig(StrictModel):
     critical_temperature_celsius: float = 8.0
     pickup_timeout_s: float = 60.0
+    idle_timeout_s: float = 120.0
+
+
+class PaymentTerminalConfigModel(StrictModel):
+    enabled: bool = False
+    driver: str = "mock"
+    device_name: str = "payment_terminal"
+    port: str = ""
+    baudrate: int = 9600
+    timeout_s: float = 30.0
+    settings: dict[str, Any] = Field(default_factory=dict)
+
+
+class ServiceModeConfig(StrictModel):
+    pin: str = "0000"
+    lock_purchase_button: bool = False
+    visible_button: bool = False
+
+    @model_validator(mode="after")
+    def _validate_pin_not_default_in_production(self) -> "ServiceModeConfig":
+        return self
+
+
+class PaymentMethodsConfig(StrictModel):
+    cash: bool = True
+    card: bool = False
+    qr: bool = False
+    sbp: bool = False
 
 
 class MachineConfig(StrictModel):
@@ -28,6 +56,8 @@ class MachineConfig(StrictModel):
     currency: str = "RUB"
     startup_state: str = "SELF_TEST"
     policies: MachinePoliciesConfig = Field(default_factory=MachinePoliciesConfig)
+    service_mode: ServiceModeConfig = Field(default_factory=ServiceModeConfig)
+    payment_methods: PaymentMethodsConfig = Field(default_factory=PaymentMethodsConfig)
 
     @field_validator("machine_id", "currency", "startup_state")
     @classmethod
@@ -64,7 +94,17 @@ class LoggingConfig(StrictModel):
     filename: str = "flower_vending.jsonl"
     json_logs: bool = Field(default=True, alias="json")
     stderr: bool = True
+    async_log: bool = True
     rotation: LogRotationConfig = Field(default_factory=LogRotationConfig)
+    sensitive_fields: tuple[str, ...] = (
+        "bill_minor_units",
+        "price_minor_units",
+        "accepted_minor_units",
+        "change_due_minor_units",
+        "refund_minor_units",
+        "reserved_minor_units",
+        "remaining_minor_units",
+    )
 
 
 class DeviceCommandPolicyConfig(StrictModel):
@@ -142,8 +182,8 @@ class RuntimeConfig(StrictModel):
 
 
 class UiConfig(StrictModel):
-    window_title: str = "Flower Vending Simulator"
-    kiosk_fullscreen: bool = False
+    window_title: str = "ЭКСПРЕСС БУКЕТ"
+    kiosk_fullscreen: bool = True
 
     @field_validator("window_title")
     @classmethod
@@ -342,6 +382,7 @@ class DevicesConfig(StrictModel):
     door_sensor: GenericDeviceConfig
     inventory_sensor: GenericDeviceConfig
     position_sensor: GenericDeviceConfig
+    payment_terminal: PaymentTerminalConfigModel = Field(default_factory=PaymentTerminalConfigModel)
 
 
 class AppConfig(StrictModel):

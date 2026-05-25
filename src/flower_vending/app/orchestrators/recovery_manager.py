@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+from typing import Literal
 
 from flower_vending.app.event_bus import EventBus
 from flower_vending.app.fsm import MachineState, StateMachineEngine
@@ -14,21 +16,33 @@ from flower_vending.domain.events.machine_events import machine_event
 from flower_vending.domain.exceptions import ManualInterventionRequiredError
 
 
+_logger = logging.getLogger(__name__)
+
+IntentClassification = Literal["manual_review_required", "cancel_safe"]
+
+
 @dataclass(frozen=True, slots=True)
 class RecoveryPlan:
     transaction_id: str
     action: str
     reason: str
     operator_required: bool
+    intent_classification: IntentClassification | None = None
 
 
-MANUAL_REVIEW_INTENTS = {
-    "change_dispense_requested",
-    "refund_dispense_requested",
-    "motor_vend_requested",
-    "window_open_requested",
-    "window_close_requested",
+_INTENT_CLASSIFICATION: dict[str, IntentClassification] = {
+    "motor_vend_requested": "manual_review_required",
+    "window_open_requested": "manual_review_required",
+    "window_close_requested": "manual_review_required",
+    "refund_dispense_requested": "manual_review_required",
+    "change_dispense_requested": "manual_review_required",
+    "inventory_decrement": "manual_review_required",
+    "acceptance_disable_requested": "cancel_safe",
 }
+
+
+def classify_intent(action_name: str) -> IntentClassification:
+    return _INTENT_CLASSIFICATION.get(action_name, "cancel_safe")
 
 
 class RecoveryManager:
@@ -71,6 +85,12 @@ class RecoveryManager:
             if plan is None:
                 continue
             plans.append(plan)
+            _logger.warning(
+                "unresolved_intent_detected action=%s transaction_id=%s classification=%s",
+                intent.entry_name,
+                plan.transaction_id,
+                plan.intent_classification,
+            )
             await self._event_bus.publish(
                 machine_event(
                     "unresolved_intent_detected",
@@ -78,6 +98,7 @@ class RecoveryManager:
                     transaction_id=plan.transaction_id,
                     action=plan.action,
                     reason=plan.reason,
+                    intent_classification=plan.intent_classification,
                     intent_name=intent.entry_name,
                     logical_step=intent.payload.get("logical_step"),
                 )
@@ -90,6 +111,7 @@ class RecoveryManager:
                         transaction_id=plan.transaction_id,
                         action=plan.action,
                         reason=plan.reason,
+                        intent_classification=plan.intent_classification,
                     )
                 )
         if plans:
@@ -99,6 +121,23 @@ class RecoveryManager:
                 self._fsm.force_state(MachineState.RECOVERY_PENDING, "unresolved_intent_recovery_required")
             self._machine_status_service.set_machine_state(self._fsm.current_state)
             self._machine_status_service.block_sales("recovery_pending")
+
+        orphaned = self._journal.orphaned_outcomes()
+        for record in orphaned:
+            _logger.warning(
+                "orphaned_outcome_detected action=%s transaction_id=%s",
+                record.entry_name,
+                record.transaction_id,
+            )
+            await self._event_bus.publish(
+                machine_event(
+                    "orphaned_outcome_detected",
+                    correlation_id=correlation_id,
+                    transaction_id=record.transaction_id,
+                    action=record.entry_name,
+                )
+            )
+
         return tuple(plans)
 
     async def recover_transaction(self, transaction_id: str, correlation_id: str) -> RecoveryPlan:
@@ -117,6 +156,7 @@ class RecoveryManager:
                 transaction_id=transaction_id,
                 action=plan.action,
                 reason=plan.reason,
+                intent_classification=plan.intent_classification,
             )
         )
         if plan.operator_required:
@@ -127,10 +167,18 @@ class RecoveryManager:
                     transaction_id=transaction_id,
                     action=plan.action,
                     reason=plan.reason,
+                    intent_classification=plan.intent_classification,
                 )
             )
+            _logger.warning(
+                "recovery_manual_review_required transaction_id=%s action=%s reason=%s classification=%s",
+                transaction_id,
+                plan.action,
+                plan.reason,
+                plan.intent_classification,
+            )
             raise ManualInterventionRequiredError(plan.reason)
-        if plan.action == "cancel_safe":
+        if plan.action == "cancel_safe" or plan.intent_classification == "cancel_safe":
             transaction.cancel()
             self._transaction_coordinator.clear_active(transaction_id)
             self._machine_status_service.set_active_transaction(None)
@@ -143,6 +191,7 @@ class RecoveryManager:
                     correlation_id=correlation_id,
                     transaction_id=transaction_id,
                     action=plan.action,
+                    intent_classification=plan.intent_classification,
                 )
             )
         return plan
@@ -153,13 +202,15 @@ class RecoveryManager:
         transaction = self._transaction_coordinator.get(intent.transaction_id)
         if transaction is None:
             return None
-        if intent.entry_name in MANUAL_REVIEW_INTENTS:
+        classification = classify_intent(intent.entry_name)
+        if classification == "manual_review_required":
             transaction.mark_ambiguous()
             return RecoveryPlan(
                 transaction_id=intent.transaction_id,
                 action="manual_review",
                 reason=f"unresolved_intent:{intent.entry_name}",
                 operator_required=True,
+                intent_classification=classification,
             )
         transaction.mark_recovery_pending()
         return RecoveryPlan(
@@ -167,4 +218,5 @@ class RecoveryManager:
             action="recovery_pending",
             reason=f"unresolved_intent:{intent.entry_name}",
             operator_required=False,
+            intent_classification=classification,
         )

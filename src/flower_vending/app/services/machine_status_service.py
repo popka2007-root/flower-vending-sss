@@ -5,11 +5,13 @@ from __future__ import annotations
 from flower_vending.app.fsm.states import MachineState
 from flower_vending.domain.aggregates import MachineRuntimeAggregate
 from flower_vending.domain.exceptions import SaleBlockedError
+from flower_vending.payments.change_manager import ChangeManager
 
 
 class MachineStatusService:
-    def __init__(self, runtime: MachineRuntimeAggregate) -> None:
+    def __init__(self, runtime: MachineRuntimeAggregate, change_manager: ChangeManager | None = None) -> None:
         self._runtime = runtime
+        self._change_manager = change_manager
 
     @property
     def runtime(self) -> MachineRuntimeAggregate:
@@ -39,6 +41,10 @@ class MachineStatusService:
 
     def sales_allowed(self) -> bool:
         return self._runtime.status.allow_cash_sales and not self._runtime.status.sale_blockers
+
+    def clear_drift(self) -> None:
+        if self._change_manager is not None:
+            self._change_manager.clear_drift()
 
     def ensure_sales_allowed(self) -> None:
         if not self.sales_allowed():

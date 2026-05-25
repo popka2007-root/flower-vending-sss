@@ -5,7 +5,7 @@ from __future__ import annotations
 from flower_vending.infrastructure.persistence.sqlite.database import SQLiteDatabase
 
 
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 
 SCHEMA_SQL = """
@@ -96,8 +96,7 @@ CREATE TABLE IF NOT EXISTS transaction_journal (
     transaction_status TEXT NULL,
     payload_json TEXT NOT NULL,
     idempotency_key TEXT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)
+    created_at TEXT NOT NULL
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_transaction_journal_idempotency
@@ -174,6 +173,7 @@ CREATE TABLE IF NOT EXISTS applied_config (
 
 def ensure_sqlite_schema(database: SQLiteDatabase) -> None:
     database.executescript(SCHEMA_SQL)
+    _migrate_v1_to_v2(database)
     database.execute(
         """
         INSERT INTO schema_metadata (schema_key, schema_value)
@@ -182,3 +182,47 @@ def ensure_sqlite_schema(database: SQLiteDatabase) -> None:
         """,
         ("schema_version", str(CURRENT_SCHEMA_VERSION)),
     )
+
+
+def _migrate_v1_to_v2(database: SQLiteDatabase) -> None:
+    row = database.query_one(
+        "SELECT schema_value FROM schema_metadata WHERE schema_key = 'schema_version'"
+    )
+    if row is not None and int(row["schema_value"]) >= 2:
+        return
+    with database.transaction() as conn:
+        conn.execute("ALTER TABLE transaction_journal RENAME TO transaction_journal_old")
+        conn.executescript("""
+            CREATE TABLE transaction_journal (
+                journal_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                transaction_id TEXT NULL,
+                correlation_id TEXT NOT NULL,
+                entry_kind TEXT NOT NULL,
+                entry_name TEXT NOT NULL,
+                machine_state TEXT NULL,
+                transaction_status TEXT NULL,
+                payload_json TEXT NOT NULL,
+                idempotency_key TEXT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            INSERT INTO transaction_journal
+                (journal_id, transaction_id, correlation_id, entry_kind, entry_name,
+                 machine_state, transaction_status, payload_json, idempotency_key, created_at)
+            SELECT
+                journal_id, transaction_id, correlation_id, entry_kind, entry_name,
+                machine_state, transaction_status, payload_json, idempotency_key, created_at
+            FROM transaction_journal_old
+            ORDER BY journal_id ASC
+        """)
+        conn.execute("DROP TABLE transaction_journal_old")
+    database.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_transaction_journal_idempotency
+        ON transaction_journal(idempotency_key)
+        WHERE idempotency_key IS NOT NULL
+    """)
+    database.execute("""
+        CREATE INDEX IF NOT EXISTS idx_transaction_journal_transaction
+        ON transaction_journal(transaction_id, journal_id)
+    """)

@@ -4,6 +4,10 @@
 class FlowerVendingError(RuntimeError):
     """Base domain/application error."""
 
+    def __init__(self, message: str = "", *, user_message: str | None = None) -> None:
+        super().__init__(message)
+        self.user_message = user_message
+
 
 class DomainValidationError(FlowerVendingError):
     """Raised when domain input data is invalid."""
@@ -24,9 +28,21 @@ class ConcurrencyConflictError(FlowerVendingError):
 class SaleBlockedError(FlowerVendingError):
     """Raised when machine policy blocks a sale."""
 
+    def __init__(self, message: str = "") -> None:
+        super().__init__(
+            message,
+            user_message="Продажи временно приостановлены. Попробуйте позже или обратитесь к администратору.",
+        )
+
 
 class ProductUnavailableError(FlowerVendingError):
     """Raised when the chosen product cannot be sold."""
+
+    def __init__(self, message: str = "") -> None:
+        super().__init__(
+            message,
+            user_message="К сожалению, этот букет только что купили. Взгляните на другие варианты!",
+        )
 
 
 class SlotUnavailableError(FlowerVendingError):
@@ -55,10 +71,20 @@ class BillRejectedError(PaymentError):
 
 class ValidatorUnavailableError(PaymentError):
     """Raised when the bill validator cannot be used safely."""
+    def __init__(self, message: str = "") -> None:
+        super().__init__(
+            message,
+            user_message="Приём наличных временно недоступен. Попробуйте оплату картой или повторите позже.",
+        )
 
 
 class ChangeUnavailableError(PaymentError):
     """Raised when safe change cannot be reserved or dispensed."""
+    def __init__(self, message: str = "") -> None:
+        super().__init__(
+            message,
+            user_message="Автомат не может выдать сдачу. Пожалуйста, приготовьте точную сумму или выберите другой товар.",
+        )
 
 
 class ExactChangeOnlyViolationError(PaymentError):
@@ -115,3 +141,8 @@ class JournalConsistencyError(RecoveryError):
 
 class ManualInterventionRequiredError(RecoveryError):
     """Raised when operator review is required to proceed."""
+    def __init__(self, message: str = "") -> None:
+        super().__init__(
+            message,
+            user_message="Автомат на обслуживании. Пожалуйста, обратитесь к администратору. Приносим извинения!",
+        )

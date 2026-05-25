@@ -43,8 +43,9 @@ class EventBusDeliveryModeTests(AsyncHarnessTestCase):
         harness.core.event_bus.subscribe_critical("*", failing_journal_listener)
         harness.core.event_bus.subscribe_best_effort("*", observer)
 
-        with self.assertRaisesRegex(RuntimeError, "journal write failed"):
-            await harness.start_purchase(correlation_id="critical-listener")
+        with self.assertLogs("flower_vending.event_bus", level="ERROR") as logs:
+            with self.assertRaisesRegex(RuntimeError, "journal write failed"):
+                await harness.start_purchase(correlation_id="critical-listener")
 
-        self.assertEqual(delivered, ["purchase_started"])
-        self.assertIn("purchase_started", harness.recorder.event_types)
+        self.assertEqual(delivered, [])
+        self.assertIn("event_bus_critical_handler_failed", "\n".join(logs.output))

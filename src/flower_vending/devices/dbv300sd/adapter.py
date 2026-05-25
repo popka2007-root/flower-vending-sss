@@ -25,8 +25,8 @@ from flower_vending.devices.dbv300sd.protocol import (
     DBV300Protocol,
     DeferredMDBProtocol,
     DeferredPulseProtocol,
-    DeferredSerialProtocol,
 )
+from flower_vending.devices.dbv300sd.protocol.jcm_serial import JCMSerialDBV300Protocol, JcmProtocolConfig
 from flower_vending.devices.dbv300sd.transport import DBV300Transport, SerialDBV300Transport
 from flower_vending.devices.exceptions import (
     DeviceNotStartedError,
@@ -89,16 +89,22 @@ class DBV300SDValidator(BillValidator):
                 return
             self._health = replace(self._health, state=DeviceOperationalState.INITIALIZING)
             await self._transport.open()
+            # FIX: Zombie poll task guard — if start() fails AFTER create_task
+            # but BEFORE _started = True, the poll task runs on a half-initialized
+            # transport. We create the task last and track it so the except
+            # handler can cancel it.
+            poll_task: asyncio.Task[None] | None = None
             try:
                 await self._protocol.initialize(self._transport)
                 if self._config.startup_disable_acceptance:
                     await self._protocol.set_acceptance_enabled(self._transport, False)
                 self._acceptance_enabled = False
                 self._stop_requested.clear()
-                self._poll_task = asyncio.create_task(
+                poll_task = asyncio.create_task(
                     self._poll_loop(),
                     name=f"{self.name}{_POLL_TASK_NAME_SUFFIX}",
                 )
+                self._poll_task = poll_task
                 self._started = True
                 self._health = replace(
                     self._health,
@@ -107,6 +113,13 @@ class DBV300SDValidator(BillValidator):
                 )
             except Exception as exc:
                 self._health = self._fault_health("startup_failed", str(exc))
+                # FIX: Cancel poll task if created before _started was set
+                if poll_task is not None and not self._started:
+                    poll_task.cancel()
+                    try:
+                        await poll_task
+                    except asyncio.CancelledError:
+                        pass
                 await self._safe_shutdown_transport()
                 raise
 
@@ -212,6 +225,12 @@ class DBV300SDValidator(BillValidator):
             return None
 
     async def _poll_loop(self) -> None:
+        # FIX: Fault backoff counter — after consecutive faults the poll
+        # interval increases exponentially to prevent flooding the event
+        # bus with thousands of VALIDATOR_FAULT events per second (see E9).
+        consecutive_faults = 0
+        backoff_factor = 2.0
+        max_backoff_s = 30.0
         while not self._stop_requested.is_set():
             try:
                 protocol_events = await self._protocol.poll(self._transport)
@@ -223,6 +242,7 @@ class DBV300SDValidator(BillValidator):
                 )
                 for event in protocol_events:
                     await self._emit_event(self._translate_event(event))
+                consecutive_faults = 0
             except asyncio.CancelledError:
                 raise
             except HardwareConfirmationRequiredError as exc:
@@ -230,7 +250,14 @@ class DBV300SDValidator(BillValidator):
                 return
             except Exception as exc:
                 await self._handle_fault(exc)
-            await asyncio.sleep(self._config.poll_interval_s)
+                consecutive_faults += 1
+            poll_interval = self._config.poll_interval_s
+            if consecutive_faults > 0:
+                poll_interval = min(
+                    poll_interval * (backoff_factor ** min(consecutive_faults, 5)),
+                    max_backoff_s,
+                )
+            await asyncio.sleep(poll_interval)
 
     async def _emit_event(self, event: BillValidatorEvent) -> None:
         if event.event_type is BillValidatorEventType.VALIDATOR_DISABLED:
@@ -348,7 +375,11 @@ def _build_transport(config: DBV300SDValidatorConfig) -> DBV300Transport:
 
 def _build_protocol(config: DBV300SDValidatorConfig) -> DBV300Protocol:
     if config.protocol_kind is DBV300ProtocolKind.SERIAL:
-        return DeferredSerialProtocol()
+        protocol_config = JcmProtocolConfig(
+            poll_interval_s=config.poll_interval_s,
+            denomination_map=None,
+        )
+        return JCMSerialDBV300Protocol(protocol_config)
     if config.protocol_kind is DBV300ProtocolKind.MDB:
         return DeferredMDBProtocol()
     if config.protocol_kind is DBV300ProtocolKind.PULSE:

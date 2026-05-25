@@ -15,119 +15,119 @@ runtime:
   seed_demo_data: true
 
 ui:
-  window_title: Цветочный автомат
-  kiosk_fullscreen: false
+  window_title: "🌺 ЭКСПРЕСС БУКЕТ"
+  kiosk_fullscreen: true
 
 catalog:
   items:
     - product_id: roses_ecuador_7
       slot_id: A1
       name: roses_ecuador_7
-      display_name: Розы Эквадор 7 шт.
-      category: roses
-      price_minor_units: 249000
+      display_name: Весенний микс
+      category: bouquets
+      price_minor_units: 150000
       quantity: 4
       capacity: 8
-      is_bouquet: false
+      is_bouquet: true
       enabled: true
       temperature_profile: cooled
       metadata:
-        short_description: Классические крупные розы в лаконичной упаковке.
+        short_description: Яркие весенние цветы
         image_path: products/roses-ecuador-7.jpg
-        color_theme: burgundy
-        accent: "#8f1f45"
-        freshness_note: Собран сегодня
-        size_label: 7 стеблей
+        color_theme: pink
+        accent: "#ec4899"
+        freshness_note: Свежая поставка
+        size_label: Стандарт
     - product_id: white_tulips_9
       slot_id: A2
       name: white_tulips_9
-      display_name: Тюльпаны белые 9 шт.
-      category: tulips
-      price_minor_units: 199000
+      display_name: Радужный букет
+      category: bouquets
+      price_minor_units: 220000
       quantity: 3
       capacity: 8
-      is_bouquet: false
+      is_bouquet: true
       enabled: true
       temperature_profile: cooled
       metadata:
-        short_description: Светлый весенний букет для дома или комплимента.
+        short_description: Разноцветные тюльпаны
         image_path: products/white-tulips-9.jpg
-        color_theme: green
-        accent: "#1f6f4a"
-        freshness_note: Поставка утро
-        size_label: 9 стеблей
+        color_theme: pink
+        accent: "#ec4899"
+        freshness_note: Свежая поставка
+        size_label: Стандарт
     - product_id: gentle_mix
       slot_id: B1
       name: gentle_mix
-      display_name: Нежный микс
-      category: bouquets
-      price_minor_units: 299000
+      display_name: Тюльпаны premium
+      category: tulips
+      price_minor_units: 180000
       quantity: 3
       capacity: 6
       is_bouquet: true
       enabled: true
       temperature_profile: cooled
       metadata:
-        short_description: Розы и сезонные цветы в мягкой пастельной гамме.
+        short_description: Элегантные тюльпаны
         image_path: products/gentle-mix.jpg
-        color_theme: blush
-        accent: "#b88a44"
-        freshness_note: Собран сегодня
-        size_label: Средний букет
+        color_theme: green
+        accent: "#1f6f4a"
+        freshness_note: Свежая поставка
+        size_label: Премиум
     - product_id: compliment_bouquet
       slot_id: B2
       name: compliment_bouquet
-      display_name: Букет комплимент
+      display_name: Летний рай
       category: gift
-      price_minor_units: 149000
+      price_minor_units: 250000
       quantity: 5
       capacity: 6
       is_bouquet: true
       enabled: true
       temperature_profile: cooled
       metadata:
-        short_description: Небольшой аккуратный букет для приятного повода.
+        short_description: Роскошная композиция
         image_path: products/compliment-bouquet.jpg
-        color_theme: gold
-        accent: "#b88a44"
+        color_theme: pink
+        accent: "#ec4899"
         freshness_note: Свежая поставка
-        size_label: Подарочный формат
+        size_label: Большой
     - product_id: peony_roses
       slot_id: C1
       name: peony_roses
-      display_name: Пионовидные розы
+      display_name: Нежность
       category: roses
-      price_minor_units: 349000
+      price_minor_units: 190000
       quantity: 1
       capacity: 4
       is_bouquet: true
       enabled: true
       temperature_profile: cooled
       metadata:
-        short_description: Объёмные нежно-розовые бутоны с премиальной подачей.
+        short_description: Букет пастельных оттенков
         image_path: products/peony-roses.jpg
         color_theme: blush
-        accent: "#8f1f45"
-        freshness_note: Остался один
-        size_label: Премиум букет
+        accent: "#ec4899"
+        freshness_note: Свежая поставка
+        size_label: Средний
     - product_id: seasonal_bouquet
       slot_id: C2
       name: seasonal_bouquet
-      display_name: Сезонный букет
+      display_name: Калейдоскоп
       category: seasonal
-      price_minor_units: 249000
+      price_minor_units: 210000
       quantity: 2
       capacity: 5
       is_bouquet: true
       enabled: true
       temperature_profile: cooled
       metadata:
-        short_description: Яркий микс из актуальных сезонных цветов и зелени.
+        short_description: Яркий ассорти
         image_path: products/seasonal-bouquet.jpg
-        color_theme: green
-        accent: "#1f6f4a"
-        freshness_note: Срезка сегодня
-        size_label: Средний букет
+        color_theme: yellow
+        accent: "#ec4899"
+        freshness_note: Свежая поставка
+        size_label: Средний
 
 persistence:
   sqlite_path: var/data/flower_vending_simulator.db

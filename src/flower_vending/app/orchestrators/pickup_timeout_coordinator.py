@@ -47,10 +47,10 @@ class PickupTimeoutCoordinator:
     async def handle_delivery_window_opened(self, event: DomainEvent) -> None:
         if event.transaction_id is None:
             return
-        transaction = self._transaction_coordinator.get(event.transaction_id)
-        if transaction is None:
-            return
         async with self._lock:
+            transaction = self._transaction_coordinator.get(event.transaction_id)
+            if transaction is None:
+                return
             self._arm_waiting_transaction(transaction)
 
     async def handle_pickup_finished(self, event: DomainEvent) -> None:
@@ -74,10 +74,6 @@ class PickupTimeoutCoordinator:
             if transaction is None:
                 raise RuntimeError("no transaction is waiting for customer pickup")
             transaction_id = transaction.transaction_id.value
-            if transaction_id in self._handling:
-                raise RuntimeError("pickup timeout is already being handled")
-            self._deadlines.pop(transaction_id, None)
-            self._handling.add(transaction_id)
         await self._handle_timeout(transaction_id, correlation_id=correlation_id, forced=True)
         return transaction_id
 
@@ -96,11 +92,9 @@ class PickupTimeoutCoordinator:
         expired: list[tuple[str, str]] = []
         async with self._lock:
             self._sync_waiting_transactions()
-            for transaction_id, deadline in tuple(self._deadlines.items()):
+            for transaction_id, deadline in list(self._deadlines.items()):
                 if deadline > now or transaction_id in self._handling:
                     continue
-                self._deadlines.pop(transaction_id, None)
-                self._handling.add(transaction_id)
                 transaction = self._transaction_coordinator.get(transaction_id)
                 expired.append(
                     (
@@ -111,6 +105,11 @@ class PickupTimeoutCoordinator:
         return expired
 
     async def _handle_timeout(self, transaction_id: str, *, correlation_id: str, forced: bool) -> None:
+        async with self._lock:
+            if transaction_id in self._handling:
+                return
+            self._deadlines.pop(transaction_id, None)
+            self._handling.add(transaction_id)
         try:
             transaction = self._transaction_coordinator.get(transaction_id)
             if transaction is None or transaction.status is not TransactionStatus.WAITING_FOR_CUSTOMER_PICKUP:
@@ -125,7 +124,7 @@ class PickupTimeoutCoordinator:
                     deadline_at=self._deadline_for_transaction(transaction).isoformat(),
                 )
             )
-            if self._fsm.current_state is MachineState.WAITING_FOR_CUSTOMER_PICKUP:
+            if self._fsm.current_state == MachineState.WAITING_FOR_CUSTOMER_PICKUP:
                 self._fsm.transition(MachineState.CLOSING_DELIVERY_WINDOW, "pickup_timeout_elapsed")
                 self._machine_status_service.set_machine_state(self._fsm.current_state)
             self._record_intent(
@@ -138,12 +137,6 @@ class PickupTimeoutCoordinator:
                 await self._window_controller.close_window(correlation_id=correlation_id)
             except Exception as exc:
                 transaction.mark_faulted()
-                if self._fsm.can_transition(MachineState.FAULT):
-                    self._fsm.transition(MachineState.FAULT, "pickup_timeout_window_close_failed")
-                else:
-                    self._fsm.force_state(MachineState.FAULT, "pickup_timeout_window_close_failed")
-                self._machine_status_service.set_machine_state(self._fsm.current_state)
-                self._machine_status_service.block_sales("delivery_window_fault")
                 self._record_outcome(
                     transaction,
                     action_name="window_close_requested",
@@ -152,6 +145,12 @@ class PickupTimeoutCoordinator:
                     forced=forced,
                     error=exc.__class__.__name__,
                 )
+                if self._fsm.can_transition(MachineState.FAULT):
+                    self._fsm.transition(MachineState.FAULT, "pickup_timeout_window_close_failed")
+                else:
+                    self._fsm.force_state(MachineState.FAULT, "pickup_timeout_window_close_failed")
+                self._machine_status_service.set_machine_state(self._fsm.current_state)
+                self._machine_status_service.block_sales("delivery_window_fault")
                 await self._event_bus.publish(
                     vending_event(
                         "pickup_timeout_window_close_failed",
@@ -177,7 +176,7 @@ class PickupTimeoutCoordinator:
                 forced=forced,
             )
             transaction.mark_pickup_timed_out_window_closed()
-            if self._fsm.current_state is MachineState.CLOSING_DELIVERY_WINDOW:
+            if self._fsm.current_state == MachineState.CLOSING_DELIVERY_WINDOW:
                 self._fsm.transition(MachineState.RECOVERY_PENDING, "pickup_timeout_manual_review_required")
             elif self._fsm.can_transition(MachineState.RECOVERY_PENDING):
                 self._fsm.transition(MachineState.RECOVERY_PENDING, "pickup_timeout_manual_review_required")

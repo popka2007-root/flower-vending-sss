@@ -34,6 +34,18 @@ class EventBus:
     def subscribe_best_effort(self, event_type: str, handler: EventHandler) -> None:
         self.subscribe(event_type, handler, critical=False)
 
+    def unsubscribe(self, event_type: str, handler: EventHandler) -> bool:
+        subscriptions = self._subscribers.get(event_type)
+        if not subscriptions:
+            return False
+        for i, subscription in enumerate(subscriptions):
+            if subscription.handler is handler:
+                subscriptions.pop(i)
+                if not subscriptions:
+                    self._subscribers.pop(event_type, None)
+                return True
+        return False
+
     async def publish(self, event: DomainEvent) -> None:
         subscriptions = [
             *self._subscribers.get(event.event_type, []),
@@ -41,27 +53,56 @@ class EventBus:
         ]
         if not subscriptions:
             return
+
+        critical_subscriptions = [s for s in subscriptions if s.critical]
+        best_effort_subscriptions = [s for s in subscriptions if not s.critical]
+
+        first_error: BaseException | None = None
+        if critical_subscriptions:
+            critical_results = await asyncio.gather(
+                *(s.handler(event) for s in critical_subscriptions),
+                return_exceptions=True,
+            )
+            for i, (subscription, result) in enumerate(
+                zip(critical_subscriptions, critical_results), start=1
+            ):
+                if not isinstance(result, BaseException):
+                    continue
+                if isinstance(result, asyncio.CancelledError):
+                    raise result
+                self._logger.error(
+                    "event_bus_critical_handler_failed",
+                    extra={
+                        "event_type": event.event_type,
+                        "correlation_id": event.correlation_id,
+                        "transaction_id": event.transaction_id,
+                        "handler": self._handler_name(subscription.handler),
+                        "order": i,
+                        "critical": True,
+                    },
+                    exc_info=(type(result), result, result.__traceback__),
+                )
+                if first_error is None:
+                    first_error = result
+
+        if first_error is not None and isinstance(first_error, Exception):
+            raise first_error
+
+        if not best_effort_subscriptions:
+            return
+
         results = await asyncio.gather(
-            *(subscription.handler(event) for subscription in subscriptions),
+            *(s.handler(event) for s in best_effort_subscriptions),
             return_exceptions=True,
         )
-        critical_failures: list[Exception] = []
-        for subscription, result in zip(subscriptions, results, strict=True):
+        for subscription, result in zip(best_effort_subscriptions, results, strict=True):
             if not isinstance(result, BaseException):
                 continue
             if isinstance(result, asyncio.CancelledError):
                 raise result
             if not isinstance(result, Exception):
                 raise result
-            if subscription.critical:
-                critical_failures.append(result)
-                continue
             self._log_best_effort_failure(subscription, event, result)
-        if not critical_failures:
-            return
-        if len(critical_failures) == 1:
-            raise critical_failures[0]
-        raise ExceptionGroup("critical event handlers failed", critical_failures)
 
     def _log_best_effort_failure(
         self,

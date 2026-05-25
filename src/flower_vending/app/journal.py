@@ -100,6 +100,9 @@ class ApplicationJournal(Protocol):
     def unresolved_intents(self) -> tuple[ApplicationJournalRecord, ...]:
         """Return intent records that do not have a matching outcome."""
 
+    def orphaned_outcomes(self) -> tuple[ApplicationJournalRecord, ...]:
+        """Return outcome records that do not have a matching intent."""
+
 
 class NoopApplicationJournal:
     def record_intent(
@@ -130,4 +133,7 @@ class NoopApplicationJournal:
         return None
 
     def unresolved_intents(self) -> tuple[ApplicationJournalRecord, ...]:
+        return ()
+
+    def orphaned_outcomes(self) -> tuple[ApplicationJournalRecord, ...]:
         return ()

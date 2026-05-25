@@ -12,6 +12,8 @@ UNSAFE_MACHINE_STATES = {
     "FAULT",
     "SERVICE_MODE",
     "RECOVERY_PENDING",
+    "REFUND",
+    "MANUAL_REVIEW",
 }
 
 

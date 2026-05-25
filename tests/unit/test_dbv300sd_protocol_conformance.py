@@ -10,12 +10,11 @@ from flower_vending.devices.contracts import (
     ValidatorProtocolEvent,
 )
 from flower_vending.devices.dbv300sd.adapter import _build_protocol
-from flower_vending.devices.dbv300sd.config import DBV300ProtocolKind, DBV300SDValidatorConfig
+from flower_vending.devices.dbv300sd.config import DBV300ProtocolKind, DBV300SDValidatorConfig, DBV300TransportKind, SerialTransportSettings
 from flower_vending.devices.dbv300sd.protocol import (
     DBV300Protocol,
     DeferredMDBProtocol,
     DeferredPulseProtocol,
-    DeferredSerialProtocol,
 )
 from flower_vending.devices.dbv300sd.transport import DBV300Transport
 from flower_vending.devices.exceptions import (
@@ -114,16 +113,12 @@ class DBV300ProtocolConformanceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_initialize_calls_expected_transport_methods(self) -> None:
         transport = FakeTransport()
-
         await self.protocol.initialize(transport)
-
         self.assertEqual(transport.calls, ["flush_input", ("write", b"fake-init")])
 
     async def test_poll_maps_raw_protocol_events_to_validator_protocol_event(self) -> None:
         transport = FakeTransport(read_payloads=[b"bill-validated:500"])
-
         events = await self.protocol.poll(transport)
-
         self.assertEqual(len(events), 1)
         event = events[0]
         self.assertEqual(event.event_type, BillValidatorEventType.BILL_VALIDATED)
@@ -135,21 +130,22 @@ class DBV300ProtocolConformanceTests(unittest.IsolatedAsyncioTestCase):
     async def test_poll_fault_paths_raise_confirmation_or_adapter_errors(self) -> None:
         with self.assertRaises(HardwareConfirmationRequiredError):
             await self.protocol.poll(FakeTransport(read_payloads=[b"hardware-unconfirmed"]))
-
         with self.assertRaises(DeviceAdapterError):
             await self.protocol.poll(FakeTransport(read_payloads=[b"decode-fault"]))
 
+    def test_build_protocol_returns_correct_types(self) -> None:
+        from flower_vending.devices.dbv300sd.protocol.jcm_serial import JCMSerialDBV300Protocol
 
-class DeferredProtocolDefaultsTests(unittest.TestCase):
-    def test_production_builder_keeps_deferred_protocols_by_default(self) -> None:
-        config = DBV300SDValidatorConfig.__new__(DBV300SDValidatorConfig)
-        object.__setattr__(config, "protocol_kind", DBV300ProtocolKind.SERIAL)
-
-        self.assertIsInstance(_build_protocol(config), DeferredSerialProtocol)
-
+        config = DBV300SDValidatorConfig(
+            device_name="test",
+            transport_kind=DBV300TransportKind.SERIAL,
+            protocol_kind=DBV300ProtocolKind.SERIAL,
+            serial_transport=SerialTransportSettings(port="COM_TEST"),
+            poll_interval_s=0.2,
+        )
+        self.assertIsInstance(_build_protocol(config), JCMSerialDBV300Protocol)
         object.__setattr__(config, "protocol_kind", DBV300ProtocolKind.MDB)
         self.assertIsInstance(_build_protocol(config), DeferredMDBProtocol)
-
         object.__setattr__(config, "protocol_kind", DBV300ProtocolKind.PULSE)
         self.assertIsInstance(_build_protocol(config), DeferredPulseProtocol)
 

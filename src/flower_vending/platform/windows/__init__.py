@@ -38,6 +38,13 @@ def build_profile(config: PlatformConfig) -> PlatformProfile:
                 config={},
             ),
             PlatformExtensionPoint(
+                name="kiosk_lock",
+                mode="windows_service",
+                status=PlatformIntegrationStatus.EXTENSION_POINT,
+                description="Windows kiosk lock can be backed by a local service or scheduled task.",
+                config={"adapter": "SimulatorKioskLock"},
+            ),
+            PlatformExtensionPoint(
                 name="watchdog",
                 mode=config.watchdog.adapter,
                 status=PlatformIntegrationStatus.EXTENSION_POINT,

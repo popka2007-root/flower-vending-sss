@@ -5,8 +5,10 @@ from flower_vending.ui.presenters.kiosk_presenter import KioskPresenter, ScreenR
 from flower_vending.ui.presenters.payment_presenter import PaymentPresenter
 from flower_vending.ui.presenters.service_presenter import ServicePresenter
 from flower_vending.ui.presenters.status_presenter import StatusPresenter
+from flower_vending.ui.presenters.admin_presenter import AdminPresenter
 
 __all__ = [
+    "AdminPresenter",
     "CatalogPresenter",
     "KioskPresenter",
     "PaymentPresenter",

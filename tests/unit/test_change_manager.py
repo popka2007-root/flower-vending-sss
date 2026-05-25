@@ -11,8 +11,8 @@ from flower_vending.payments.change_manager import ChangeManager
 from flower_vending.simulators.devices import MockChangeDispenser
 
 
-class ChangeManagerUnitTests(unittest.TestCase):
-    def test_exact_change_only_assessment_when_worst_case_change_is_unsafe(self) -> None:
+class ChangeManagerUnitTests(unittest.IsolatedAsyncioTestCase):
+    async def test_exact_change_only_assessment_when_worst_case_change_is_unsafe(self) -> None:
         inventory = MoneyInventory(
             currency=Currency("RUB"),
             accounting_counts_by_denomination={100: 1},
@@ -29,12 +29,44 @@ class ChangeManagerUnitTests(unittest.TestCase):
 
             price = _Price()
 
-        assessment = manager.assess_sale(_TransactionStub())  # type: ignore[arg-type]
+        assessment = await manager.assess_sale(_TransactionStub())  # type: ignore[arg-type]
         self.assertFalse(assessment.sale_supported)
         self.assertTrue(assessment.exact_change_only)
         self.assertEqual(assessment.plan, {})
 
-    def test_reserve_rejects_insufficient_change_inventory(self) -> None:
+    async def test_clear_drift_resets_flag(self) -> None:
+        inventory = MoneyInventory(
+            currency=Currency("RUB"),
+            accounting_counts_by_denomination={100: 5},
+            drift_detected=True,
+        )
+        manager = ChangeManager(
+            inventory=inventory,
+            change_dispenser=MockChangeDispenser(inventory={100: 5}),
+        )
+        self.assertTrue(inventory.drift_detected)
+        manager.clear_drift()
+        self.assertFalse(inventory.drift_detected)
+
+    async def test_clear_drift_via_machine_status_service(self) -> None:
+        inventory = MoneyInventory(
+            currency=Currency("RUB"),
+            accounting_counts_by_denomination={100: 5},
+            drift_detected=True,
+        )
+        manager = ChangeManager(
+            inventory=inventory,
+            change_dispenser=MockChangeDispenser(inventory={100: 5}),
+        )
+        from flower_vending.app.services import MachineStatusService
+        from flower_vending.domain.aggregates import MachineRuntimeAggregate
+
+        service = MachineStatusService(MachineRuntimeAggregate(), change_manager=manager)
+        self.assertTrue(inventory.drift_detected)
+        service.clear_drift()
+        self.assertFalse(inventory.drift_detected)
+
+    async def test_reserve_rejects_insufficient_change_inventory(self) -> None:
         inventory = MoneyInventory(
             currency=Currency("RUB"),
             accounting_counts_by_denomination={100: 1},
@@ -46,7 +78,7 @@ class ChangeManagerUnitTests(unittest.TestCase):
         )
 
         with self.assertRaises(ChangeUnavailableError):
-            manager.reserve_for_transaction("tx-1", {100: 2})
+            await manager.reserve_for_transaction("tx-1", {100: 2})
 
 
 if __name__ == "__main__":

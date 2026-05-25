@@ -123,7 +123,6 @@ class MockChangeDispenser(MockManagedDevice, ChangeDispenser):
                 details={"fault_code": partial.code.value, **partial.details},
             )
 
-        self._consume_inventory(request.counts_by_denomination)
         self._heartbeat(state=DeviceOperationalState.READY, inventory=dict(self._inventory))
         return ChangeDispenseResult(
             request_id=request.request_id,

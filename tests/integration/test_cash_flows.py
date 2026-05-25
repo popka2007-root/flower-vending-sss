@@ -7,7 +7,7 @@ from tests._support import AsyncHarnessTestCase
 from flower_vending.devices.exceptions import DeviceAdapterError
 from flower_vending.domain.commands.purchase_commands import CancelPurchase
 from flower_vending.domain.entities.transaction import TransactionStatus
-from flower_vending.domain.exceptions import ChangeUnavailableError, PartialPayoutError, SaleBlockedError
+from flower_vending.domain.exceptions import ChangeUnavailableError, SaleBlockedError
 from flower_vending.simulators.faults import SimulatorFaultCode
 
 
@@ -71,7 +71,7 @@ class CashFlowIntegrationTests(AsyncHarnessTestCase):
         )
 
         transaction = harness.core.transaction_coordinator.require(transaction_id)
-        inventory = await harness.change_dispenser.get_accounting_inventory()
+        inventory = harness.money_inventory.accounting_counts_by_denomination
         self.assertEqual(transaction.status, TransactionStatus.CANCELLED)
         self.assertIn("refund_dispensed", harness.recorder.event_types)
         self.assertEqual(inventory[100], 4)
@@ -95,7 +95,7 @@ class CashFlowIntegrationTests(AsyncHarnessTestCase):
         self.assertEqual(transaction.status.value, "accepting_cash")
         self.assertIn("bill_rejected", harness.recorder.event_types)
 
-    async def test_partial_payout_transitions_to_recovery_pending(self) -> None:
+    async def test_partial_payout_transitions_to_manual_review(self) -> None:
         harness = await self.create_harness(
             price_minor_units=300,
             change_inventory={100: 2},
@@ -109,12 +109,14 @@ class CashFlowIntegrationTests(AsyncHarnessTestCase):
             message="simulated partial payout",
         )
 
-        with self.assertRaises(PartialPayoutError):
+        with self.assertRaises(ChangeUnavailableError):
             await harness.insert_bill(500, correlation_id="partial-payout")
 
         transaction = harness.core.transaction_coordinator.require(transaction_id)
         self.assertEqual(transaction.status.value, "ambiguous")
-        self.assertEqual(harness.core.fsm.current_state.value, "RECOVERY_PENDING")
+        self.assertEqual(harness.core.fsm.current_state.value, "MANUAL_REVIEW")
+        self.assertIn("change_failed", harness.recorder.event_types)
+        self.assertIn("manual_review_required", harness.recorder.event_types)
 
     async def test_motor_fault_transitions_to_fault(self) -> None:
         harness = await self.create_harness()

@@ -39,8 +39,7 @@ class CatalogPresenter:
             banner=banner,
             items=items,
             categories=self._category_view_models(items),
-            primary_action=ActionButtonViewModel("buy_selected", "Купить выбранное"),
-            secondary_action=ActionButtonViewModel("open_service", "Сервис"),
+            secondary_action=None,
         )
 
     def present_product_details(
@@ -54,9 +53,10 @@ class CatalogPresenter:
             advisory = "Нужна точная сумма: автомат не сможет безопасно выдать сдачу."
         elif not entry.available:
             advisory = "Этот букет временно недоступен. Выберите другую позицию в каталоге."
+        pm = machine.payment_methods or {}
         return ProductDetailsScreenViewModel(
             title=entry.display_name,
-            subtitle="Проверьте выбор",
+            subtitle="",
             price_text=format_money(entry.price_minor_units, entry.currency_code),
             availability_text=self._availability_text(entry),
             short_description=self._metadata_text(entry.metadata, "short_description"),
@@ -71,7 +71,8 @@ class CatalogPresenter:
                 "Оплатить",
                 entry.available,
             ),
-            secondary_action=ActionButtonViewModel("back_to_catalog", "Назад"),
+            secondary_action=ActionButtonViewModel("", "Назад"),
+            payment_methods=self._payment_method_actions(pm),
         )
 
     def _item_view_model(self, entry: CatalogEntry) -> CatalogItemViewModel:
@@ -82,14 +83,16 @@ class CatalogPresenter:
             category=entry.category,
             category_label=self._category_label(entry.category, entry.metadata),
             price_text=format_money(entry.price_minor_units, entry.currency_code),
+            price_minor_units=entry.price_minor_units,
+            currency_code=entry.currency_code,
             availability_text=self._availability_text(entry),
             enabled=entry.available,
-            short_description=self._metadata_text(entry.metadata, "short_description"),
+            short_description=self._metadata_text(entry.metadata, "short_description") or (
+                self._metadata_text(entry.metadata, "description")),
             image_path=self._image_path(entry.metadata),
             freshness_note=self._metadata_text(entry.metadata, "freshness_note"),
             size_label=self._metadata_text(entry.metadata, "size_label"),
-            accent=self._metadata_text(entry.metadata, "accent")
-            or self._metadata_text(entry.metadata, "color_theme"),
+            accent=None,
             badge_text=self._badge_text(entry),
         )
 
@@ -100,27 +103,32 @@ class CatalogPresenter:
         seen: dict[str, str] = {}
         for item in items:
             seen.setdefault(item.category, item.category_label)
-        return (CatalogCategoryViewModel("all", "Все"),) + tuple(
-            CatalogCategoryViewModel(category_id, label) for category_id, label in seen.items()
+        all_label = "Все"
+        return (CatalogCategoryViewModel("all", all_label),) + tuple(
+            CatalogCategoryViewModel(
+                category_id,
+                label,
+            )
+            for category_id, label in seen.items()
         )
 
     def _availability_text(self, entry: CatalogEntry) -> str:
         if not entry.available:
             return "Нет в наличии"
-        if entry.quantity == 1:
-            return "Остался 1"
         return "В наличии"
 
     def _badge_text(self, entry: CatalogEntry) -> str:
         size_label = self._metadata_text(entry.metadata, "size_label")
         if size_label:
-            compact_labels = {
+            compact = {
+                "7 стеблей": "7 шт",
+                "9 стеблей": "9 шт",
                 "Средний букет": "Средний",
                 "Подарочный формат": "Подарочный",
                 "Премиум букет": "Премиум",
             }
-            return compact_labels.get(size_label, size_label)
-        return "Букет" if entry.is_bouquet else "Цветы"
+            return compact.get(size_label, size_label)
+        return ""
 
     def _category_label(self, category: str, metadata: dict[str, Any] | None = None) -> str:
         if metadata:
@@ -154,3 +162,20 @@ class CatalogPresenter:
             return None
         text = str(value).strip()
         return text or None
+
+    @staticmethod
+    def _payment_method_actions(pm: dict[str, bool]) -> tuple[ActionButtonViewModel, ...]:
+        labels = {
+            "cash": "Наличные",
+            "card": "Карта",
+            "qr": "QR-код",
+            "sbp": "СБП",
+        }
+        actions: list[ActionButtonViewModel] = []
+        for method_id, enabled in pm.items():
+            if enabled and method_id in labels:
+                actions.append(ActionButtonViewModel(
+                    action_id=f"pay_{method_id}",
+                    label=labels[method_id],
+                ))
+        return tuple(actions)

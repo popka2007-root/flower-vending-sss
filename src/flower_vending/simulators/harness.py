@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+import shutil
+import tempfile
+from dataclasses import dataclass, field
+from pathlib import Path
 
 from flower_vending.app import ApplicationCore, build_application_core
+from flower_vending.app.journal import ApplicationJournal
 from flower_vending.domain.commands.purchase_commands import AcceptCash, ConfirmPickup, StartPurchase
 from flower_vending.domain.entities import MoneyInventory, Product, Slot
 from flower_vending.domain.value_objects import Amount, Currency, ProductId, SlotId
 from flower_vending.app.services import InventoryService
 from flower_vending.devices.interfaces import ManagedDevice
+from flower_vending.infrastructure.persistence.journal import SQLiteTransactionJournal
+from flower_vending.infrastructure.persistence.sqlite import SQLiteDatabase, ensure_sqlite_schema
 from flower_vending.simulators.devices import (
     MockBillValidator,
     MockChangeDispenser,
@@ -43,6 +49,7 @@ class SimulationHarness:
     recorder: EventRecorder
     product_id: str
     slot_id: str
+    _database: SQLiteDatabase | None = field(default=None, repr=False)
 
     @classmethod
     def build(
@@ -60,6 +67,7 @@ class SimulationHarness:
         temperature_celsius: float = 4.0,
         service_door_open: bool = False,
         pickup_timeout_s: float = 60.0,
+        journal: ApplicationJournal | None = None,
     ) -> "SimulationHarness":
         inventory_service = InventoryService()
         inventory_service.register_product(
@@ -108,6 +116,15 @@ class SimulationHarness:
             "watchdog": watchdog,
         }
 
+        if journal is None:
+            tmp_dir = Path(tempfile.mkdtemp(prefix="flower_vending_harness_"))
+            db_path = tmp_dir / "harness_journal.db"
+            database = SQLiteDatabase(db_path, enable_wal=False, synchronous="NORMAL")
+            ensure_sqlite_schema(database)
+            journal = SQLiteTransactionJournal(database)
+        else:
+            database = None
+
         core = build_application_core(
             validator=validator,
             change_dispenser=change_dispenser,
@@ -121,6 +138,7 @@ class SimulationHarness:
             temperature_sensor=temperature_sensor,
             inventory_sensor=inventory_sensor,
             pickup_timeout_s=pickup_timeout_s,
+            journal=journal,
         )
         recorder = EventRecorder()
         core.event_bus.subscribe_best_effort("*", recorder.handle)
@@ -141,6 +159,7 @@ class SimulationHarness:
             recorder=recorder,
             product_id=product_id,
             slot_id=slot_id,
+            _database=database,
         )
 
     async def start(self) -> None:
@@ -152,6 +171,19 @@ class SimulationHarness:
         await self.core.stop_runtime()
         for device in reversed(self._all_devices()):
             await device.stop()
+        self._close_journal_database()
+
+    def _close_journal_database(self) -> None:
+        if self._database is None:
+            return
+        try:
+            self._database.close()
+        except Exception:
+            pass
+        db_path = Path(self._database.path)
+        tmp_dir = db_path.parent
+        if tmp_dir.name.startswith("flower_vending_harness_"):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
     async def poll_health(self) -> None:
         await self.core.health_monitor.poll_once()

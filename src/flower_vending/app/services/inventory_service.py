@@ -58,3 +58,34 @@ class InventoryService:
 
     def mark_vended(self, slot_id: str) -> None:
         self.get_slot(slot_id).decrement()
+
+    def set_product_enabled(self, product_id: str, enabled: bool) -> tuple[Product, Slot | None]:
+        if product_id not in self._products:
+            raise ProductUnavailableError(f"unknown product: {product_id}")
+        product = self._products[product_id]
+        product.enabled = enabled
+        slot = next(
+            (s for s in self._slots.values() if s.product_id.value == product_id),
+            None,
+        )
+        return product, slot
+
+    def set_product_stock(self, slot_id: str, quantity: int) -> Slot:
+        if slot_id not in self._slots:
+            raise SlotUnavailableError(f"unknown slot: {slot_id}")
+        slot = self._slots[slot_id]
+        slot.quantity = max(0, min(quantity, slot.capacity))
+        return slot
+
+    def remove_product(self, product_id: str) -> bool:
+        if product_id not in self._products:
+            return False
+        del self._products[product_id]
+        slots_to_remove = [sid for sid, s in self._slots.items() if s.product_id.value == product_id]
+        for sid in slots_to_remove:
+            del self._slots[sid]
+        return True
+
+    def add_product(self, product: Product, slot: Slot) -> None:
+        self._products[product.product_id.value] = product
+        self._slots[slot.slot_id.value] = slot

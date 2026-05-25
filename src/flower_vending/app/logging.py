@@ -1,0 +1,13 @@
+"""Application-layer logger protocol."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any, Protocol
+
+
+class ApplicationLogger(Protocol):
+    def info(self, msg: str, *, extra: Mapping[str, Any] | None = None) -> None: ...
+    def warning(self, msg: str, *, extra: Mapping[str, Any] | None = None) -> None: ...
+    def error(self, msg: str, *, extra: Mapping[str, Any] | None = None) -> None: ...
+    def debug(self, msg: str, *, extra: Mapping[str, Any] | None = None) -> None: ...

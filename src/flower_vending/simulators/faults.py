@@ -19,6 +19,7 @@ class SimulatorFaultCode(StrEnum):
     MOTOR_FAULT = "motor_fault"
     WINDOW_FAULT = "window_fault"
     WATCHDOG_FAULT = "watchdog_fault"
+    POWER_LOSS_DURING_MOTION = "power_loss_during_motion"
 
 
 @dataclass(slots=True)

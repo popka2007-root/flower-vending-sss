@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from io import TextIOWrapper
 from pathlib import Path
 from typing import Literal
 
@@ -62,10 +63,16 @@ class ProtocolTraceRecorder:
 
     path: Path
     _records: list[ProtocolTraceRecord] = field(default_factory=list, init=False)
+    _handle: TextIOWrapper | None = field(init=False, default=None)
 
     @property
     def records(self) -> tuple[ProtocolTraceRecord, ...]:
         return tuple(self._records)
+
+    def _ensure_open(self) -> None:
+        if self._handle is None:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self._handle = self.path.open("a", encoding="utf-8")
 
     def record(
         self,
@@ -81,11 +88,24 @@ class ProtocolTraceRecorder:
             correlation_id=correlation_id,
             note=note,
         )
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(record.to_json_payload(), ensure_ascii=False) + "\n")
+        self._ensure_open()
+        if self._handle is None:
+            raise RuntimeError(f"trace recorder failed to open {self.path}")
+        self._handle.write(json.dumps(record.to_json_payload(), ensure_ascii=False) + "\n")
         self._records.append(record)
         return record
+
+    def flush(self) -> None:
+        if self._handle is not None:
+            self._handle.flush()
+
+    def close(self) -> None:
+        if self._handle is not None:
+            self._handle.close()
+            self._handle = None
+
+    def __del__(self) -> None:
+        self.close()
 
     def record_rx(
         self,

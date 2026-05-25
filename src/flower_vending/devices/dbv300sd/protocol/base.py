@@ -88,14 +88,6 @@ class _DeferredProtocol(DBV300Protocol):
         )
 
 
-class DeferredSerialProtocol(_DeferredProtocol):
-    def __init__(self) -> None:
-        super().__init__(
-            name="dbv300sd-serial-protocol",
-            confirmation_topic="serial framing, handshake, command set, and event decoding",
-        )
-
-
 class DeferredMDBProtocol(_DeferredProtocol):
     def __init__(self) -> None:
         super().__init__(

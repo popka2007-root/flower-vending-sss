@@ -13,14 +13,18 @@ class KioskSessionState:
     selected_product_name: str | None = None
     selected_price_minor_units: int = 0
     selected_currency_code: str = "RUB"
+    payment_method: str = "cash"
     accepted_minor_units: int = 0
     change_due_minor_units: int = 0
+    refund_minor_units: int = 0
     last_error_title: str | None = None
     last_error_message: str | None = None
     last_warning_message: str | None = None
     restricted_details: tuple[str, ...] = ()
     customer_message: str = "Выберите букет или цветок"
     sale_blockers: set[str] = field(default_factory=set)
+    _1c_enabled: bool = False
+    _admin_filter: str = "all"
 
     def select_product(
         self,

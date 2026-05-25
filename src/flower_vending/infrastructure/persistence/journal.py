@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -48,7 +49,12 @@ class SQLiteTransactionJournal:
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
 
-    def append_entry(self, entry: JournalEntry) -> int:
+    def append_entry(
+        self,
+        entry: JournalEntry,
+        *,
+        _connection: sqlite3.Connection | None = None,
+    ) -> int:
         return self._database.insert(
             """
             INSERT OR IGNORE INTO transaction_journal (
@@ -84,6 +90,7 @@ class SQLiteTransactionJournal:
                 "idempotency_key": entry.idempotency_key,
                 "created_at": entry.created_at.isoformat(),
             },
+            connection=_connection,
         )
 
     def append_intent(
@@ -201,6 +208,7 @@ class SQLiteTransactionJournal:
         machine_state: str | None = None,
         transaction_status: str | None = None,
         idempotency_key: str | None = None,
+        _connection: sqlite3.Connection | None = None,
     ) -> int:
         return self.append_entry(
             JournalEntry(
@@ -213,7 +221,8 @@ class SQLiteTransactionJournal:
                 payload=dict(event.payload),
                 idempotency_key=idempotency_key,
                 created_at=event.occurred_at,
-            )
+            ),
+            _connection=_connection,
         )
 
     def read_for_transaction(self, transaction_id: str) -> tuple[JournalEntry, ...]:
@@ -310,6 +319,31 @@ class SQLiteTransactionJournal:
                 }
             )
         )
+
+    def orphaned_outcomes(self) -> tuple[ApplicationJournalRecord, ...]:
+        rows = self._database.query_all(
+            """
+            SELECT
+                o.transaction_id,
+                o.correlation_id,
+                o.entry_kind,
+                o.entry_name,
+                o.machine_state,
+                o.transaction_status,
+                o.payload_json,
+                o.idempotency_key,
+                o.created_at
+            FROM transaction_journal o
+            LEFT JOIN transaction_journal i
+              ON i.entry_kind = 'intent'
+             AND i.idempotency_key = replace(o.idempotency_key, ':outcome', ':intent')
+            WHERE o.entry_kind = 'outcome'
+              AND o.idempotency_key IS NOT NULL
+              AND i.journal_id IS NULL
+            ORDER BY o.journal_id ASC
+            """
+        )
+        return tuple(self._row_to_application_record(row) for row in rows)
 
     def _row_to_entry(self, row: Any) -> JournalEntry:
         return JournalEntry(

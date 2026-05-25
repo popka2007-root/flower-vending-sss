@@ -1,0 +1,24 @@
+[Unit]
+Description=Flower Vending System — kiosk runtime
+After=network.target graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=exec
+User=flower-vending
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/flower-vending/.Xauthority
+Environment=FLOWER_VENDING_CONFIG=/etc/flower-vending/machine.yaml
+ExecStart=/usr/local/bin/flower-vending simulator-ui --config "${FLOWER_VENDING_CONFIG}"
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+
+# Security hardening
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=graphical.target

@@ -12,6 +12,14 @@ from flower_vending.ui.viewmodels.screens import (
     ProductDetailsScreenViewModel,
     ServiceScreenViewModel,
     StatusScreenViewModel,
+    AdminAnalyticsTabViewModel,
+    AdminCatalogItemViewModel,
+    AdminCatalogTabViewModel,
+    AdminOrderViewModel,
+    AdminOrdersTabViewModel,
+    AdminSettingsTabViewModel,
+    AdminWindowViewModel,
+    AdminWindowsTabViewModel,
 )
 
 __all__ = [
@@ -28,4 +36,12 @@ __all__ = [
     "ProductDetailsScreenViewModel",
     "ServiceScreenViewModel",
     "StatusScreenViewModel",
+    "AdminAnalyticsTabViewModel",
+    "AdminCatalogItemViewModel",
+    "AdminCatalogTabViewModel",
+    "AdminOrderViewModel",
+    "AdminOrdersTabViewModel",
+    "AdminSettingsTabViewModel",
+    "AdminWindowViewModel",
+    "AdminWindowsTabViewModel",
 ]

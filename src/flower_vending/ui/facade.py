@@ -2,21 +2,28 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from flower_vending.app import ApplicationCore
 from flower_vending.app.fsm import MachineState
 from flower_vending.domain.commands.purchase_commands import AcceptCash, CancelPurchase, ConfirmPickup, StartPurchase
 from flower_vending.domain.commands.recovery_commands import RecoverInterruptedTransaction
-from flower_vending.domain.commands.service_commands import EnterServiceMode
-from flower_vending.domain.entities import Product, Slot, Transaction
+from flower_vending.domain.commands.service_commands import EnterServiceMode, LockPurchaseButton, ToggleProductCommand
+from flower_vending.domain.entities import Product, RecoveryStatus, Slot, Transaction
 from flower_vending.domain.events import DomainEvent
-from flower_vending.domain.value_objects import CorrelationId
+from flower_vending.domain.value_objects import Amount, CorrelationId, ProductId, SlotId
 from flower_vending.platform.common import PlatformProfile
 from flower_vending.simulators.control import EventLogEntry, RecentEventStore, SimulatorControlService
+from flower_vending.ui.theme import ThemeName, set_theme
 
+if TYPE_CHECKING:
+    from flower_vending.runtime.bootstrap import RuntimeRepositories
+
+
+logger = logging.getLogger("flower_vending.ui.facade")
 
 EventListener = Callable[[DomainEvent], Awaitable[None]]
 
@@ -44,6 +51,7 @@ class MachineUiSnapshot:
     allow_vending: bool
     service_mode: bool
     active_transaction_id: str | None
+    payment_methods: dict[str, bool] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,11 +96,20 @@ class UiApplicationFacade:
         event_store: RecentEventStore | None = None,
         simulator_controls: SimulatorControlService | None = None,
         platform_profile: PlatformProfile | None = None,
+        payment_methods: dict[str, bool] | None = None,
+        on_service_visible_changed: Callable[[bool], None] | None = None,
+        repositories: RuntimeRepositories | None = None,
+        machine_id: str | None = None,
     ) -> None:
         self._core = core
         self._event_store = event_store
         self._simulator_controls = simulator_controls
         self._platform_profile = platform_profile
+        self._payment_methods = payment_methods or {"cash": True}
+        self._on_service_visible_changed = on_service_visible_changed
+        self._service_visible = False
+        self._repositories = repositories
+        self._machine_id = machine_id
 
     def subscribe_events(self, handler: EventListener) -> None:
         self._core.event_bus.subscribe_best_effort("*", handler)
@@ -120,6 +137,7 @@ class UiApplicationFacade:
             allow_vending=status.allow_vending,
             service_mode=status.service_mode,
             active_transaction_id=status.active_transaction_id,
+            payment_methods=dict(self._payment_methods) if self._payment_methods else None,
         )
 
     def active_transaction_snapshot(self) -> TransactionUiSnapshot | None:
@@ -170,6 +188,7 @@ class UiApplicationFacade:
         return self._platform_profile
 
     async def start_cash_checkout(self, *, product_id: str, slot_id: str, correlation_id: str) -> str:
+        logger.info("start_cash_checkout", extra={"product_id": product_id, "slot_id": slot_id})
         entry = self.get_catalog_entry(product_id, slot_id)
         transaction_id = await self._core.command_bus.dispatch(
             StartPurchase(
@@ -200,15 +219,21 @@ class UiApplicationFacade:
         *,
         operator_id: str,
         correlation_id: str,
+        pin: str,
         reason: str = "ui_service_mode_request",
     ) -> str:
         return await self._core.command_bus.dispatch(
             EnterServiceMode(
                 correlation_id=correlation_id,
                 operator_id=operator_id,
+                pin=pin,
                 reason=reason,
             )
         )
+
+    @property
+    def purchase_locked(self) -> bool:
+        return self._core.service_mode_coordinator.purchase_locked
 
     async def exit_service_mode(
         self,
@@ -230,6 +255,135 @@ class UiApplicationFacade:
         )
         return MachineState.RECOVERY_PENDING.value
 
+    def set_payment_methods(self, methods: list[str]) -> None:
+        self._payment_methods = {m: True for m in methods}
+
+    def save_settings(self, settings: dict) -> None:
+        if "payment_methods" in settings:
+            self.set_payment_methods(settings["payment_methods"])
+        if "vending_name" in settings:
+            self._machine_settings = getattr(self, '_machine_settings', {})
+            self._machine_settings.update(settings)
+
+    def change_pin(self, new_pin: str) -> None:
+        self._machine_settings = getattr(self, '_machine_settings', {})
+        self._machine_settings["pin"] = new_pin
+
+    def set_service_visible(self, visible: bool) -> None:
+        self._service_visible = visible
+        if self._on_service_visible_changed:
+            self._on_service_visible_changed(visible)
+
+    @property
+    def service_visible(self) -> bool:
+        return self._service_visible
+
+    async def toggle_product(
+        self,
+        *,
+        product_id: str,
+        enabled: bool,
+        operator_id: str,
+        correlation_id: str,
+    ) -> tuple[str, bool]:
+        return await self._core.command_bus.dispatch(
+            ToggleProductCommand(
+                correlation_id=correlation_id,
+                product_id=product_id,
+                enabled=enabled,
+                operator_id=operator_id,
+            )
+        )
+
+    def set_product_stock(self, slot_id: str, quantity: int) -> None:
+        self._core.inventory_service.set_product_stock(slot_id, quantity)
+
+    def remove_product(self, product_id: str) -> bool:
+        return self._core.inventory_service.remove_product(product_id)
+
+    def edit_product(self, product_id: str, name: str, price_minor: int, category: str, stock: int) -> None:
+        svc = self._core.inventory_service
+        try:
+            product = svc._products[product_id]
+        except KeyError:
+            return
+        current_enabled = product.enabled
+        product.name = name
+        product.display_name = name
+        product.price = Amount(minor_units=price_minor, currency_code="RUB")
+        product.category = category
+        slot = next((s for s in svc._slots.values() if s.product_id.value == product_id), None)
+        if slot is not None:
+            slot.quantity = max(0, min(stock, slot.capacity))
+
+    def add_product(self, product_id: str, name: str, price_minor: int, category: str, stock: int, enabled: bool = True) -> None:
+        pid = ProductId(product_id)
+        sid = SlotId(product_id)
+        product = Product(
+            product_id=pid,
+            name=name,
+            display_name=name,
+            price=Amount(minor_units=price_minor, currency_code="RUB"),
+            category=category,
+            enabled=enabled,
+        )
+        slot = Slot(
+            slot_id=sid,
+            product_id=pid,
+            capacity=max(stock, 1),
+            quantity=stock,
+            is_enabled=True,
+        )
+        self._core.inventory_service.add_product(product, slot)
+
+    async def lock_purchase_button(
+        self,
+        *,
+        operator_id: str,
+        locked: bool = True,
+        correlation_id: str,
+    ) -> bool:
+        return await self._core.command_bus.dispatch(
+            LockPurchaseButton(
+                correlation_id=correlation_id,
+                operator_id=operator_id,
+                locked=locked,
+            )
+        )
+
+    def clear_drift(self) -> None:
+        self._core.machine_status_service.clear_drift()
+
+    def clear_simulator_recovery_state(self) -> bool:
+        if self._simulator_controls is None or self._repositories is None or self._machine_id is None:
+            return False
+        unresolved = tuple(self._core.transaction_coordinator.unresolved_transactions())
+        if not unresolved and "recovery_pending" not in self._core.machine_status_service.runtime.status.sale_blockers:
+            return False
+
+        for transaction in unresolved:
+            transaction.cancel()
+            transaction.recovery_status = RecoveryStatus.NONE
+            self._core.transaction_coordinator.clear_active(transaction.transaction_id.value)
+
+        self._core.machine_status_service.set_active_transaction(None)
+        for blocker in tuple(self._core.machine_status_service.runtime.status.sale_blockers):
+            if blocker in {"recovery_pending", "manual_review_required"}:
+                self._core.machine_status_service.unblock_sales(blocker)
+        if self._core.fsm.current_state in {MachineState.RECOVERY_PENDING, MachineState.MANUAL_REVIEW}:
+            self._core.fsm.force_state(MachineState.IDLE, "simulator_restricted_state_cleared")
+            self._core.machine_status_service.set_machine_state(self._core.fsm.current_state)
+
+        with self._repositories.database.transaction() as connection:
+            for transaction in unresolved:
+                self._repositories.transactions.save(transaction, _connection=connection)
+            self._repositories.machine_status.save(
+                self._core.machine_status_service.runtime.status,
+                machine_id=self._machine_id,
+                _connection=connection,
+            )
+        return True
+
     async def insert_simulated_bill(self, *, bill_minor_units: int, correlation_id: str) -> None:
         if self._simulator_controls is None:
             raise RuntimeError("simulator controls are not available")
@@ -245,6 +399,12 @@ class UiApplicationFacade:
             action_id,
             correlation_id=correlation_id,
         )
+
+    def touch(self) -> None:
+        self._core.idle_timeout_coordinator.touch()
+
+    def apply_theme(self, name: ThemeName) -> None:
+        set_theme(name)
 
     def _catalog_entry(self, product: Product, slot: Slot) -> CatalogEntry:
         available = product.enabled and slot.is_enabled and slot.quantity > 0

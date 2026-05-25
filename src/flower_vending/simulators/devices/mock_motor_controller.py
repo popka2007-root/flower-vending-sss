@@ -58,6 +58,18 @@ class MockMotorController(MockManagedDevice, MotorController):
                     **plan.details,
                 )
                 raise DeviceAdapterError(plan.message or "motor fault")
+            power_loss = self.injector.consume(SimulatorFaultCode.POWER_LOSS_DURING_MOTION)
+            if power_loss is not None:
+                self.vend_history.append(slot_id)
+                self._heartbeat(state=DeviceOperationalState.RECOVERY_PENDING, last_slot=slot_id,
+                                ambiguous_vend=True)
+                self._activate_fault(
+                    code=power_loss.code.value,
+                    message=power_loss.message or "power loss during motor motion",
+                    critical=True,
+                    ambiguous_vend=True,
+                )
+                raise DeviceAdapterError(power_loss.message or "power loss during motor motion")
             self.vend_history.append(slot_id)
             self._heartbeat(state=DeviceOperationalState.READY, last_slot=slot_id)
 
@@ -67,6 +79,9 @@ class MockMotorController(MockManagedDevice, MotorController):
             correlation_id=correlation_id,
             idempotency_key=idempotency_key,
         )
+
+    async def start_motion(self) -> None:
+        self._heartbeat(state=DeviceOperationalState.READY, action="start_motion")
 
     async def stop_motion(self) -> None:
         self._heartbeat(state=DeviceOperationalState.DEGRADED, action="stop_motion")

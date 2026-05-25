@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from collections import OrderedDict
 from collections.abc import Awaitable, Callable
 from typing import Any, Protocol, TypeVar, cast
 
@@ -63,7 +64,8 @@ class DeviceCommandRunner:
         self._default_policy = default_policy or DeviceCommandPolicy()
         self._activate_fault = activate_fault
         self._heartbeat = heartbeat
-        self._idempotency_cache: dict[str, Any] = {}
+        self._idempotency_cache: OrderedDict[str, Any] = OrderedDict()
+        self._idempotency_cache_maxsize = 10000
 
     async def run(
         self,
@@ -82,6 +84,7 @@ class DeviceCommandRunner:
         active_policy = policy or self._default_policy
         cache_key = self._cache_key(command_name, idempotency_key)
         if cache_key is not None and cache_key in self._idempotency_cache:
+            self._idempotency_cache.move_to_end(cache_key)
             self._heartbeat(
                 state=DeviceOperationalState.READY,
                 command_name=command_name,
@@ -89,7 +92,7 @@ class DeviceCommandRunner:
                 idempotency_key=idempotency_key,
                 idempotent_replay=True,
             )
-            return cast(T, self._idempotency_cache[cache_key])
+            return cast(T, self._copy_cached_value(self._idempotency_cache[cache_key]))
 
         max_attempts = active_policy.retry_count + 1
         last_error: DeviceCommandError | None = None
@@ -123,7 +126,7 @@ class DeviceCommandRunner:
                         result_fault=result_fault,
                     )
                     if cache_key is not None:
-                        self._idempotency_cache[cache_key] = result
+                        self._cache_set(cache_key, result)
                     if raise_on_ambiguous_result:
                         raise AmbiguousDeviceResultError(
                             f"{self._device_name}.{command_name} produced an ambiguous physical result",
@@ -143,7 +146,7 @@ class DeviceCommandRunner:
                         attempt=attempt,
                     )
                     if cache_key is not None:
-                        self._idempotency_cache[cache_key] = result
+                        self._cache_set(cache_key, result)
                     return result
 
                 self._heartbeat(
@@ -156,7 +159,7 @@ class DeviceCommandRunner:
                     reconciliation_status=reconciliation.status.value,
                 )
                 if cache_key is not None:
-                    self._idempotency_cache[cache_key] = result
+                    self._cache_set(cache_key, result)
                 return result
             except DeviceCommandError as exc:
                 last_error = exc
@@ -326,6 +329,17 @@ class DeviceCommandRunner:
             ambiguous=True,
             manual_review_required=True,
         )
+
+    def _cache_set(self, key: str, value: Any) -> None:
+        self._idempotency_cache[key] = value
+        self._idempotency_cache.move_to_end(key)
+        if len(self._idempotency_cache) > self._idempotency_cache_maxsize:
+            self._idempotency_cache.popitem(last=False)
+
+    def _copy_cached_value(self, value: T) -> T:
+        if isinstance(value, dict):
+            return cast(T, value.copy())
+        return value
 
     def _cache_key(self, command_name: str, idempotency_key: str | None) -> str | None:
         if idempotency_key is None:

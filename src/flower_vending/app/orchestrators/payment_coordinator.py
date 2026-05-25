@@ -40,12 +40,12 @@ class PaymentCoordinator:
     async def start_cash_session(self, transaction_id: str, correlation_id: str) -> Transaction:
         self._machine_status_service.ensure_sales_allowed()
         transaction = self._transaction_coordinator.require(transaction_id)
-        assessment = self._change_manager.assess_sale(transaction)
+        assessment = await self._change_manager.assess_sale(transaction)
         self._machine_status_service.set_exact_change_only(assessment.exact_change_only)
         if not assessment.sale_supported:
             raise ChangeUnavailableError("cash sale is unsafe because change cannot be guaranteed")
         if assessment.plan:
-            reserve = self._change_manager.reserve_for_transaction(
+            reserve = await self._change_manager.reserve_for_transaction(
                 transaction_id=transaction.transaction_id.value,
                 plan=assessment.plan,
             )
@@ -111,6 +111,8 @@ class PaymentCoordinator:
         )
         if transaction is None:
             return None
+        if transaction._cancelled:
+            return None
         if event.event_type is BillValidatorEventType.VALIDATOR_FAULT:
             transaction.mark_faulted()
             self._machine_status_service.block_sales("validator_fault")
@@ -164,19 +166,11 @@ class PaymentCoordinator:
             logical_step="complete_payment.disable_acceptance",
             outcome=JournalOutcome.SUCCEEDED,
         )
-        self._fsm.transition(MachineState.PAYMENT_ACCEPTED, "payment_confirmed")
+        self._fsm.transition(MachineState.PAYMENT_ACCEPTED, "payment_accepted")
         self._machine_status_service.set_machine_state(self._fsm.current_state)
-        await self._event_bus.publish(
-            payment_event(
-                "payment_confirmed",
-                correlation_id=transaction.correlation_id.value,
-                transaction_id=transaction.transaction_id.value,
-                accepted_minor_units=transaction.accepted_amount.minor_units,
-                change_due_minor_units=transaction.change_due.minor_units,
-            )
-        )
+        refund_dispensed = False
         try:
-            self._change_manager.finalize_reserve(transaction)
+            await self._change_manager.finalize_reserve(transaction)
             if transaction.change_due.minor_units > 0:
                 transaction.mark_change_pending()
                 self._fsm.transition(MachineState.DISPENSING_CHANGE, "change_dispense_requested")
@@ -222,18 +216,57 @@ class PaymentCoordinator:
                     )
                 )
         except Exception:
-            if self._fsm.can_transition(MachineState.RECOVERY_PENDING):
-                self._fsm.transition(MachineState.RECOVERY_PENDING, "change_recovery_required")
+            try:
+                await self._change_manager.dispense_refund(
+                    transaction_id=transaction.transaction_id.value,
+                    correlation_id=transaction.correlation_id.value,
+                    amount_minor_units=transaction.accepted_amount.minor_units,
+                    currency=transaction.price.currency.code,
+                )
+            except Exception:
+                transaction.mark_ambiguous()
+                if self._fsm.can_transition(MachineState.MANUAL_REVIEW):
+                    self._fsm.transition(MachineState.MANUAL_REVIEW, "change_failed_refund_failed")
+                else:
+                    self._fsm.force_state(MachineState.MANUAL_REVIEW, "change_failed_refund_failed")
                 self._machine_status_service.set_machine_state(self._fsm.current_state)
-            raise
+                await self._event_bus.publish(
+                    payment_event(
+                        "change_failed",
+                        correlation_id=transaction.correlation_id.value,
+                        transaction_id=transaction.transaction_id.value,
+                        change_due_minor_units=transaction.change_due.minor_units,
+                    )
+                )
+                await self._event_bus.publish(
+                    payment_event(
+                        "manual_review_required",
+                        correlation_id=transaction.correlation_id.value,
+                        transaction_id=transaction.transaction_id.value,
+                        action="change_failed",
+                        reason="change payout did not complete and refund also failed; operator review required",
+                    )
+                )
+                raise
+            refund_dispensed = True
         await self._event_bus.publish(
             payment_event(
-                "vend_authorized",
+                "payment_confirmed",
                 correlation_id=transaction.correlation_id.value,
                 transaction_id=transaction.transaction_id.value,
-                slot_id=transaction.slot_id.value,
+                accepted_minor_units=transaction.accepted_amount.minor_units,
+                change_due_minor_units=transaction.change_due.minor_units,
             )
         )
+        if not refund_dispensed:
+            await self._event_bus.publish(
+                payment_event(
+                    "vend_authorized",
+                    correlation_id=transaction.correlation_id.value,
+                    transaction_id=transaction.transaction_id.value,
+                    slot_id=transaction.slot_id.value,
+                )
+            )
         return transaction
 
     async def cancel_purchase(self, transaction_id: str, correlation_id: str) -> Transaction:
@@ -268,7 +301,7 @@ class PaymentCoordinator:
         ):
             await self._refund_cancelled_cash(transaction, correlation_id)
         if transaction.change_reserve is not None:
-            self._change_manager.inventory.release(transaction.change_reserve)
+            await self._change_manager.inventory.release(transaction.change_reserve)
             transaction.change_reserve = None
         transaction.cancel()
         self._fsm.transition(MachineState.CANCELLED, "purchase_cancelled")
@@ -286,8 +319,11 @@ class PaymentCoordinator:
 
     async def _refund_cancelled_cash(self, transaction: Transaction, correlation_id: str) -> None:
         if transaction.change_reserve is not None:
-            self._change_manager.inventory.release(transaction.change_reserve)
+            await self._change_manager.inventory.release(transaction.change_reserve)
             transaction.change_reserve = None
+        if self._fsm.can_transition(MachineState.REFUND):
+            self._fsm.transition(MachineState.REFUND, "refund_requested")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
         await self._event_bus.publish(
             payment_event(
                 "refund_requested",
@@ -311,7 +347,11 @@ class PaymentCoordinator:
             )
         except Exception:
             transaction.mark_ambiguous()
-            self._enter_recovery_pending("refund_recovery_required")
+            if self._fsm.can_transition(MachineState.MANUAL_REVIEW):
+                self._fsm.transition(MachineState.MANUAL_REVIEW, "refund_failed")
+            else:
+                self._fsm.force_state(MachineState.MANUAL_REVIEW, "refund_failed")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
             self._record_outcome(
                 transaction,
                 action_name="refund_dispense_requested",
@@ -327,7 +367,19 @@ class PaymentCoordinator:
                     refund_minor_units=transaction.accepted_amount.minor_units,
                 )
             )
+            await self._event_bus.publish(
+                payment_event(
+                    "manual_review_required",
+                    correlation_id=correlation_id,
+                    transaction_id=transaction.transaction_id.value,
+                    action="refund_failed",
+                    reason="refund payout did not complete; operator review required",
+                )
+            )
             raise
+        if self._fsm.current_state is MachineState.REFUND:
+            self._fsm.transition(MachineState.CANCELLED, "refund_dispensed")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
         self._record_outcome(
             transaction,
             action_name="refund_dispense_requested",

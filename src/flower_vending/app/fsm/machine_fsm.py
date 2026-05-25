@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -24,6 +25,9 @@ class StateTransitionRecord:
     new_state: MachineState
     reason: str
     occurred_at: datetime = field(default_factory=_ts)
+
+
+logger = logging.getLogger(__name__)
 
 
 class StateMachineEngine:
@@ -61,6 +65,7 @@ class StateMachineEngine:
 
     def force_state(self, target_state: MachineState, reason: str) -> StateTransitionRecord:
         """Force a state for controlled recovery or bootstrap scenarios."""
+        logger.warning("force_state: %s -> %s, reason=%s", self._state.value, target_state.value, reason)
         record = StateTransitionRecord(self._state, target_state, reason)
         self._history.append(record)
         self._state = target_state

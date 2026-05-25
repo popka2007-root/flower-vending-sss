@@ -25,6 +25,7 @@ from flower_vending.runtime.bootstrap import (  # noqa: E402
     build_simulator_environment,
 )
 from flower_vending.simulators.harness import SimulationHarness  # noqa: E402
+from flower_vending.app.journal import ApplicationJournal  # noqa: E402
 
 
 class HarnessBuildKwargs(TypedDict, total=False):
@@ -39,6 +40,7 @@ class HarnessBuildKwargs(TypedDict, total=False):
     inventory_confidence: float
     temperature_celsius: float
     service_door_open: bool
+    journal: ApplicationJournal | None
 
 
 class AsyncHarnessTestCase(unittest.IsolatedAsyncioTestCase):

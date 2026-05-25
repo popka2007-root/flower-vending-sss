@@ -109,6 +109,7 @@ class DBV300SDSerialSmokeBench:
             )
         finally:
             await self._transport.close()
+            self._recorder.close()
 
     def _append_serial_settings(
         self,

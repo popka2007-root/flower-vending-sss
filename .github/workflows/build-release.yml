@@ -13,17 +13,20 @@ permissions:
   contents: write
 
 jobs:
-  # Required release gate: simulator-safe checks only. Bench hardware checks for
-  # DBV-300-SD and other devices should live in a separate workflow once a stand exists.
   quality-checks:
-    name: Simulator-safe quality gate
-    runs-on: ubuntu-latest
+    name: Simulator-safe quality gate (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install Qt runtime dependencies
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0
@@ -32,18 +35,16 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
           python -m pip install -r requirements-ui.txt
-      - name: Run required simulator-safe project verification
-        run: |
-          # Covers config validation, unit/integration/simulator tests, diagnostics, and runtime scenarios.
-          # Bench hardware validation will be added as a separate workflow when the stand exists.
-          python scripts/verify_project.py
       - name: Run required ruff lint
-        run: python -m ruff check .
-      - name: Run non-blocking mypy baseline TODO
-        continue-on-error: true
-        run: |
-          # TODO: Make mypy a required release gate once the strict typing baseline is fixed.
-          python -m mypy src tests
+        run: make lint
+      - name: Run required mypy strict type check
+        run: make typecheck
+      - name: Run required simulator-safe project verification (Linux)
+        if: runner.os == 'Linux'
+        run: python scripts/verify_project.py
+      - name: Run E2E UI-presenter tests (Linux)
+        if: runner.os == 'Linux'
+        run: make test-e2e
 
   build-windows:
     needs: quality-checks

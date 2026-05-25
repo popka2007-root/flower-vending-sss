@@ -15,11 +15,22 @@ class ScreenId(StrEnum):
     NO_CHANGE = "no_change"
     DISPENSING = "dispensing"
     PICKUP = "pickup"
+    REFUND = "refund"
+    MANUAL_REVIEW = "manual_review"
     ERROR = "error"
     SALES_BLOCKED = "sales_blocked"
     RESTRICTED = "restricted"
+    PIN = "pin"
+    THANK_YOU = "thank_you"
     SERVICE = "service"
     DIAGNOSTICS = "diagnostics"
+
+    ADMIN = "admin"
+    ADMIN_ORDERS = "admin_orders"
+    ADMIN_ANALYTICS = "admin_analytics"
+    ADMIN_CATALOG = "admin_catalog"
+    ADMIN_WINDOWS = "admin_windows"
+    ADMIN_SETTINGS = "admin_settings"
 
 
 @dataclass(slots=True)

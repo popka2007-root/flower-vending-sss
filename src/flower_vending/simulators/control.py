@@ -38,6 +38,7 @@ SIMULATOR_ACTIONS: Final[tuple[str, ...]] = (
     "restore_inventory_match",
     "clear_simulator_faults",
     "force_pickup_timeout_now",
+    "inject_power_loss_during_motion",
 )
 
 
@@ -222,6 +223,13 @@ class SimulatorControlService:
                 correlation_id=correlation_id,
             )
             await self._announce_action(action_id, correlation_id, transaction_id=transaction_id)
+            return
+        if action_id == "inject_power_loss_during_motion":
+            self._motor_controller.inject_fault(
+                SimulatorFaultCode.POWER_LOSS_DURING_MOTION,
+                message="simulator power loss during motor motion",
+            )
+            await self._announce_action(action_id, correlation_id)
             return
         raise KeyError(f"unknown simulator action: {action_id}")
 

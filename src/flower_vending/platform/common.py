@@ -60,6 +60,13 @@ def build_generic_profile(config: PlatformConfig) -> PlatformProfile:
                 config={},
             ),
             PlatformExtensionPoint(
+                name="kiosk_lock",
+                mode="generic",
+                status=PlatformIntegrationStatus.EXTENSION_POINT,
+                description="Kiosk lock/unlock is a software-only stub until OS integration is confirmed.",
+                config={"adapter": "SimulatorKioskLock"},
+            ),
+            PlatformExtensionPoint(
                 name="watchdog",
                 mode=config.watchdog.adapter,
                 status=PlatformIntegrationStatus.EXTENSION_POINT,

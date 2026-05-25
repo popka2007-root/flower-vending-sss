@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import warnings
 from collections.abc import Coroutine, Mapping
 from contextlib import suppress
 from dataclasses import dataclass, field
@@ -13,7 +14,9 @@ from flower_vending.app.event_bus import EventBus
 from flower_vending.app.fsm import MachineState, StateMachineEngine
 from flower_vending.app.journal import ApplicationJournal, NoopApplicationJournal
 from flower_vending.app.orchestrators import (
+    DisplayRotationController,
     HealthMonitor,
+    IdleTimeoutCoordinator,
     PaymentCoordinator,
     PickupTimeoutCoordinator,
     RecoveryManager,
@@ -42,7 +45,7 @@ from flower_vending.domain.commands.purchase_commands import (
     StartPurchase,
 )
 from flower_vending.domain.commands.recovery_commands import RecoverInterruptedTransaction
-from flower_vending.domain.commands.service_commands import EnterServiceMode
+from flower_vending.domain.commands.service_commands import EnterServiceMode, LockPurchaseButton, ToggleProductCommand
 from flower_vending.domain.entities import MoneyInventory
 from flower_vending.payments.change_manager import ChangeManager
 
@@ -63,8 +66,11 @@ class ApplicationCore:
     pickup_timeout_coordinator: PickupTimeoutCoordinator
     service_mode_coordinator: ServiceModeCoordinator
     health_monitor: HealthMonitor
+    idle_timeout_coordinator: IdleTimeoutCoordinator
+    display_rotation_controller: DisplayRotationController | None = None
     watchdog: WatchdogAdapter | None = None
     health_poll_interval_s: float = 0.5
+    display_rotation_poll_interval_s: float = 1.0
     validator_event_timeout_s: float = 0.05
     watchdog_timeout_s: float = 30.0
     pickup_timeout_poll_interval_s: float = 0.25
@@ -87,13 +93,29 @@ class ApplicationCore:
         self._spawn_runtime_task(self._validator_event_loop(), "validator-events")
         self._spawn_runtime_task(self._health_monitor_loop(), "health-monitor")
         self._spawn_runtime_task(self._pickup_timeout_loop(), "pickup-timeout")
+        self._spawn_runtime_task(self._idle_timeout_loop(), "idle-timeout")
+        if self.display_rotation_controller is not None:
+            self._spawn_runtime_task(self._display_rotation_loop(), "display-rotation")
 
     async def stop_runtime(self) -> None:
         self._runtime_stop.set()
-        for task in self._runtime_tasks:
-            task.cancel()
-        if self._runtime_tasks:
-            await asyncio.gather(*self._runtime_tasks, return_exceptions=True)
+
+        def _tasks_by_name(name: str) -> list[asyncio.Task[None]]:
+            return [t for t in self._runtime_tasks if t.get_name() == f"flower-vending-{name}"]
+
+        async def _cancel_group(name: str) -> None:
+            tasks = _tasks_by_name(name)
+            for t in tasks:
+                t.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+
+        await _cancel_group("health-monitor")
+        await _cancel_group("validator-events")
+        await _cancel_group("pickup-timeout")
+        await _cancel_group("idle-timeout")
+        await _cancel_group("display-rotation")
+
         self._runtime_tasks.clear()
         if self.watchdog is not None:
             with suppress(Exception):
@@ -149,6 +171,33 @@ class ApplicationCore:
                 pass
             await self.pickup_timeout_coordinator.poll_once()
 
+    async def _idle_timeout_loop(self) -> None:
+        poll_interval = max(self.idle_timeout_coordinator.timeout_s / 10.0, 1.0)
+        while not self._runtime_stop.is_set():
+            try:
+                await asyncio.wait_for(
+                    self._runtime_stop.wait(),
+                    timeout=poll_interval,
+                )
+                break
+            except asyncio.TimeoutError:
+                pass
+            await self.idle_timeout_coordinator.poll_once()
+
+    async def _display_rotation_loop(self) -> None:
+        if self.display_rotation_controller is None:
+            return
+        while not self._runtime_stop.is_set():
+            try:
+                await asyncio.wait_for(
+                    self._runtime_stop.wait(),
+                    timeout=self.display_rotation_poll_interval_s,
+                )
+                break
+            except asyncio.TimeoutError:
+                pass
+            await self.display_rotation_controller.poll_once()
+
 
 def build_application_core(
     *,
@@ -170,20 +219,28 @@ def build_application_core(
     watchdog_timeout_s: float = 30.0,
     pickup_timeout_s: float = 60.0,
     journal: ApplicationJournal | None = None,
+    service_pin: str = "0000",
+    idle_timeout_s: float = 120.0,
 ) -> ApplicationCore:
     event_bus = EventBus()
     command_bus = CommandBus()
     fsm = StateMachineEngine(initial_state=initial_state)
-    machine_status_service = MachineStatusService(MachineRuntimeAggregate())
-    machine_status_service.set_machine_state(initial_state)
-    application_journal = journal or NoopApplicationJournal()
-
-    transaction_coordinator = TransactionCoordinator()
     change_manager = ChangeManager(
         inventory=money_inventory,
         change_dispenser=change_dispenser,
         accepted_bill_denominations=accepted_bill_denominations,
     )
+    machine_status_service = MachineStatusService(MachineRuntimeAggregate(), change_manager=change_manager)
+    machine_status_service.set_machine_state(initial_state)
+    if journal is None:
+        warnings.warn(
+            "No ApplicationJournal provided — using NoopApplicationJournal. "
+            "Intent/outcome records will not be persisted.",
+            stacklevel=2,
+        )
+    application_journal = journal or NoopApplicationJournal()
+
+    transaction_coordinator = TransactionCoordinator()
     payment_coordinator = PaymentCoordinator(
         validator=validator,
         change_manager=change_manager,
@@ -225,6 +282,7 @@ def build_application_core(
         event_bus=event_bus,
         fsm=fsm,
         machine_status_service=machine_status_service,
+        service_pin=service_pin,
     )
     health_monitor = HealthMonitor(
         devices=devices,
@@ -237,15 +295,32 @@ def build_application_core(
     watchdog_device = devices.get("watchdog")
     watchdog = watchdog_device if isinstance(watchdog_device, WatchdogAdapter) else None
 
+    idle_timeout_coordinator = IdleTimeoutCoordinator(
+        payment_coordinator=payment_coordinator,
+        transaction_coordinator=transaction_coordinator,
+        event_bus=event_bus,
+        fsm=fsm,
+        machine_status_service=machine_status_service,
+        idle_timeout_s=idle_timeout_s,
+        journal=application_journal,
+    )
+    display_rotation_controller = DisplayRotationController(
+        motor_controller=motor_controller,
+        fsm=fsm,
+        machine_status_service=machine_status_service,
+    )
+
     command_bus.register_handler(StartPurchase, vending_controller.start_purchase)
     command_bus.register_handler(AcceptCash, vending_controller.accept_cash)
     command_bus.register_handler(CancelPurchase, vending_controller.cancel_purchase)
     command_bus.register_handler(ConfirmPickup, vending_controller.confirm_pickup)
+    command_bus.register_handler(ToggleProductCommand, vending_controller.handle_toggle_product)
     command_bus.register_handler(
         RecoverInterruptedTransaction,
         lambda command: recovery_manager.recover_transaction(command.transaction_id, command.correlation_id),
     )
     command_bus.register_handler(EnterServiceMode, service_mode_coordinator.enter_service_mode)
+    command_bus.register_handler(LockPurchaseButton, service_mode_coordinator.lock_purchase_button)
     event_bus.subscribe_critical("vend_authorized", vending_controller.handle_vend_authorized)
     event_bus.subscribe_best_effort(
         "delivery_window_opened",
@@ -276,6 +351,8 @@ def build_application_core(
         pickup_timeout_coordinator=pickup_timeout_coordinator,
         service_mode_coordinator=service_mode_coordinator,
         health_monitor=health_monitor,
+        idle_timeout_coordinator=idle_timeout_coordinator,
+        display_rotation_controller=display_rotation_controller,
         watchdog=watchdog,
         health_poll_interval_s=health_poll_interval_s,
         validator_event_timeout_s=validator_event_timeout_s,

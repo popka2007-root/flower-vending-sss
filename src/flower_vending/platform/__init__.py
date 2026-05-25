@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from flower_vending.infrastructure.config.models import PlatformConfig
 from flower_vending.platform.common import PlatformProfile, build_generic_profile
+from flower_vending.platform.kiosk_lock import KioskLock, SimulatorKioskLock  # noqa: F401
 from flower_vending.platform.linux import build_profile as build_linux_profile
 from flower_vending.platform.windows import build_profile as build_windows_profile
 

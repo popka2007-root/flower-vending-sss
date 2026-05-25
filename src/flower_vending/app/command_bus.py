@@ -8,7 +8,7 @@ from typing import TypeVar, cast, overload
 from flower_vending.domain.commands import Command
 from flower_vending.domain.commands.purchase_commands import AcceptCash, CancelPurchase, ConfirmPickup, StartPurchase
 from flower_vending.domain.commands.recovery_commands import RecoverInterruptedTransaction
-from flower_vending.domain.commands.service_commands import EnterServiceMode
+from flower_vending.domain.commands.service_commands import EnterServiceMode, LockPurchaseButton, ToggleProductCommand
 
 
 CommandT = TypeVar("CommandT", bound=Command)
@@ -44,7 +44,13 @@ class CommandBus:
     async def dispatch(self, command: EnterServiceMode) -> str: ...
 
     @overload
-    async def dispatch(self, command: RecoverInterruptedTransaction) -> object: ...
+    async def dispatch(self, command: ToggleProductCommand) -> tuple[str, bool]: ...
+
+    @overload
+    async def dispatch(self, command: LockPurchaseButton) -> bool: ...
+
+    @overload
+    async def dispatch(self, command: RecoverInterruptedTransaction) -> str: ...
 
     @overload
     async def dispatch(self, command: Command) -> object: ...
