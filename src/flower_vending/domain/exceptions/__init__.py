@@ -146,3 +146,12 @@ class ManualInterventionRequiredError(RecoveryError):
             message,
             user_message="Автомат на обслуживании. Пожалуйста, обратитесь к администратору. Приносим извинения!",
         )
+
+
+class TerminalLockedError(FlowerVendingError):
+    """Raised when the terminal is locked due to a faulted or ambiguous transaction state."""
+    def __init__(self, message: str = "") -> None:
+        super().__init__(
+            message,
+            user_message="Автомат временно заблокирован из-за технической ошибки. Пожалуйста, обратитесь к администратору.",
+        )
