@@ -26,7 +26,10 @@ from flower_vending.devices.dbv300sd.protocol import (
     DeferredMDBProtocol,
     DeferredPulseProtocol,
 )
-from flower_vending.devices.dbv300sd.protocol.jcm_serial import JCMSerialDBV300Protocol, JcmProtocolConfig
+from flower_vending.devices.dbv300sd.protocol.jcm_serial import (
+    JCMSerialDBV300Protocol,
+    JcmProtocolConfig,
+)
 from flower_vending.devices.dbv300sd.transport import DBV300Transport, SerialDBV300Transport
 from flower_vending.devices.exceptions import (
     DeviceNotStartedError,

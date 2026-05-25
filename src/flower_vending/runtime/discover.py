@@ -41,12 +41,14 @@ def list_com_ports() -> list[dict[str, str]]:
         import serial.tools.list_ports as lp
 
         for port in lp.comports():
-            result.append({
-                "device": port.device,
-                "description": port.description,
-                "hwid": port.hwid,
-                "manufacturer": port.manufacturer or "",
-            })
+            result.append(
+                {
+                    "device": port.device,
+                    "description": port.description,
+                    "hwid": port.hwid,
+                    "manufacturer": port.manufacturer or "",
+                }
+            )
     except Exception:
         pass
     return result

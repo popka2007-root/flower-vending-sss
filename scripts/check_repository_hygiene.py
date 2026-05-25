@@ -57,11 +57,7 @@ def repository_files() -> list[Path]:
         check=True,
         capture_output=True,
     )
-    return [
-        ROOT / item.decode("utf-8")
-        for item in result.stdout.split(b"\0")
-        if item
-    ]
+    return [ROOT / item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
 
 
 def check_paths(paths: list[Path]) -> list[str]:

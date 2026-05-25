@@ -8,10 +8,19 @@ from typing import Literal
 
 from flower_vending.app.event_bus import EventBus
 from flower_vending.app.fsm import MachineState, StateMachineEngine
-from flower_vending.app.journal import ApplicationJournal, ApplicationJournalRecord, NoopApplicationJournal
+from flower_vending.app.journal import (
+    ApplicationJournal,
+    ApplicationJournalRecord,
+    NoopApplicationJournal,
+)
 from flower_vending.app.orchestrators.transaction_coordinator import TransactionCoordinator
 from flower_vending.app.services.machine_status_service import MachineStatusService
-from flower_vending.domain.entities import PaymentStatus, PayoutStatus, Transaction, TransactionStatus
+from flower_vending.domain.entities import (
+    PaymentStatus,
+    PayoutStatus,
+    Transaction,
+    TransactionStatus,
+)
 from flower_vending.domain.events.machine_events import machine_event
 from flower_vending.domain.exceptions import ManualInterventionRequiredError
 
@@ -63,20 +72,35 @@ class RecoveryManager:
 
     def assess(self, transaction: Transaction) -> RecoveryPlan:
         if transaction.status in {TransactionStatus.COMPLETED, TransactionStatus.CANCELLED}:
-            return RecoveryPlan(transaction.transaction_id.value, "none", "transaction_terminal", False)
+            return RecoveryPlan(
+                transaction.transaction_id.value, "none", "transaction_terminal", False
+            )
         if transaction.status is TransactionStatus.PICKUP_TIMED_OUT:
-            return RecoveryPlan(transaction.transaction_id.value, "manual_review", "pickup_timeout", True)
+            return RecoveryPlan(
+                transaction.transaction_id.value, "manual_review", "pickup_timeout", True
+            )
         if transaction.status in {TransactionStatus.AMBIGUOUS, TransactionStatus.FAULTED}:
-            return RecoveryPlan(transaction.transaction_id.value, "manual_review", "ambiguous_side_effect", True)
+            return RecoveryPlan(
+                transaction.transaction_id.value, "manual_review", "ambiguous_side_effect", True
+            )
         if transaction.payment_status is PaymentStatus.CONFIRMED and transaction.payout_status in {
             PayoutStatus.PARTIAL,
             PayoutStatus.AMBIGUOUS,
             PayoutStatus.FAILED,
         }:
-            return RecoveryPlan(transaction.transaction_id.value, "manual_review", "payout_unresolved", True)
+            return RecoveryPlan(
+                transaction.transaction_id.value, "manual_review", "payout_unresolved", True
+            )
         if transaction.payment_status is PaymentStatus.CONFIRMED:
-            return RecoveryPlan(transaction.transaction_id.value, "pending_review", "confirmed_payment_replay_needed", True)
-        return RecoveryPlan(transaction.transaction_id.value, "cancel_safe", "payment_not_confirmed", False)
+            return RecoveryPlan(
+                transaction.transaction_id.value,
+                "pending_review",
+                "confirmed_payment_replay_needed",
+                True,
+            )
+        return RecoveryPlan(
+            transaction.transaction_id.value, "cancel_safe", "payment_not_confirmed", False
+        )
 
     async def detect_unresolved_intents(self, correlation_id: str) -> tuple[RecoveryPlan, ...]:
         plans: list[RecoveryPlan] = []
@@ -116,9 +140,13 @@ class RecoveryManager:
                 )
         if plans:
             if self._fsm.can_transition(MachineState.RECOVERY_PENDING):
-                self._fsm.transition(MachineState.RECOVERY_PENDING, "unresolved_intent_recovery_required")
+                self._fsm.transition(
+                    MachineState.RECOVERY_PENDING, "unresolved_intent_recovery_required"
+                )
             else:
-                self._fsm.force_state(MachineState.RECOVERY_PENDING, "unresolved_intent_recovery_required")
+                self._fsm.force_state(
+                    MachineState.RECOVERY_PENDING, "unresolved_intent_recovery_required"
+                )
             self._machine_status_service.set_machine_state(self._fsm.current_state)
             self._machine_status_service.block_sales("recovery_pending")
 

@@ -71,6 +71,7 @@ class BillRejectedError(PaymentError):
 
 class ValidatorUnavailableError(PaymentError):
     """Raised when the bill validator cannot be used safely."""
+
     def __init__(self, message: str = "") -> None:
         super().__init__(
             message,
@@ -80,6 +81,7 @@ class ValidatorUnavailableError(PaymentError):
 
 class ChangeUnavailableError(PaymentError):
     """Raised when safe change cannot be reserved or dispensed."""
+
     def __init__(self, message: str = "") -> None:
         super().__init__(
             message,
@@ -141,6 +143,7 @@ class JournalConsistencyError(RecoveryError):
 
 class ManualInterventionRequiredError(RecoveryError):
     """Raised when operator review is required to proceed."""
+
     def __init__(self, message: str = "") -> None:
         super().__init__(
             message,

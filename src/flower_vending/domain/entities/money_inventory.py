@@ -32,8 +32,12 @@ class MoneyInventory:
         drift_detected: bool = False,
     ) -> None:
         self.currency = currency if currency is not None else Currency()
-        self._accounting_counts = dict(accounting_counts_by_denomination) if accounting_counts_by_denomination else {}
-        self._reserved_counts = dict(reserved_counts_by_denomination) if reserved_counts_by_denomination else {}
+        self._accounting_counts = (
+            dict(accounting_counts_by_denomination) if accounting_counts_by_denomination else {}
+        )
+        self._reserved_counts = (
+            dict(reserved_counts_by_denomination) if reserved_counts_by_denomination else {}
+        )
         self.physical_state_confidence = physical_state_confidence
         self.exact_change_only = exact_change_only
         self.last_reconciled_at = last_reconciled_at

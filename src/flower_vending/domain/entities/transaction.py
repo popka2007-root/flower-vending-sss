@@ -12,7 +12,13 @@ from flower_vending.domain.exceptions import (
     InvariantViolationError,
     PaymentSessionUnavailableError,
 )
-from flower_vending.domain.value_objects import Amount, CorrelationId, ProductId, SlotId, TransactionId
+from flower_vending.domain.value_objects import (
+    Amount,
+    CorrelationId,
+    ProductId,
+    SlotId,
+    TransactionId,
+)
 
 
 def _ts() -> datetime:

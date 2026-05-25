@@ -23,7 +23,9 @@ class MockPositionSensor(MockManagedDevice, PositionSensor):
         self._is_home = is_home
 
     async def read_position(self) -> PositionReading:
-        self._heartbeat(position_id=self._position_id, in_position=self._in_position, is_home=self._is_home)
+        self._heartbeat(
+            position_id=self._position_id, in_position=self._in_position, is_home=self._is_home
+        )
         return PositionReading(
             sensor_name=self.name,
             position_id=self._position_id,

@@ -89,7 +89,9 @@ class DeliveryScreenWidget(QWidget):
         btn_layout.addStretch(1)
         self._action_btn = GradientButton("Забрать букет")
         self._action_btn.setFixedWidth(300)
-        self._action_btn.clicked.connect(lambda: self.primary_action_requested.emit("confirm_pickup"))
+        self._action_btn.clicked.connect(
+            lambda: self.primary_action_requested.emit("confirm_pickup")
+        )
         self._action_btn.hide()
         btn_layout.addWidget(self._action_btn)
         btn_layout.addStretch(1)

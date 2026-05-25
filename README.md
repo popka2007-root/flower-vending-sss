@@ -10,5 +10,5 @@ Full technical specification: **[REPOSITORY.md](REPOSITORY.md)**
 pip install -r requirements-dev.txt -r requirements-ui.txt
 python -m flower_vending simulator-ui --config config/examples/machine.simulator.yaml
 ```
-"# flower-vending-sss"  
-"# flower-vending-sss" 
+"# flower-vending-sss"
+"# flower-vending-sss"

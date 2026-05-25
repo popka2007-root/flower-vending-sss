@@ -10,7 +10,10 @@ class SimulatorScenarioTests(unittest.IsolatedAsyncioTestCase):
         results = await run_default_scenario_suite(
             ("normal_sale", "bill_rejected", "pickup_timeout")
         )
-        self.assertEqual([result.scenario_name for result in results], ["normal_sale", "bill_rejected", "pickup_timeout"])
+        self.assertEqual(
+            [result.scenario_name for result in results],
+            ["normal_sale", "bill_rejected", "pickup_timeout"],
+        )
         self.assertTrue(all(result.success for result in results))
 
 

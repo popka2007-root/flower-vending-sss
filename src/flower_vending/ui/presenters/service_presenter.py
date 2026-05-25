@@ -44,8 +44,10 @@ _SCENARIOS: dict[str, tuple[str, ...]] = {
     "Тест оплаты": ("inject_validator_unavailable", "inject_bill_jam"),
     "Тест выдачи": ("inject_motor_fault", "inject_window_fault"),
     "Полный recovery": (
-        "close_service_door", "restore_temperature_nominal",
-        "restore_inventory_match", "clear_simulator_faults",
+        "close_service_door",
+        "restore_temperature_nominal",
+        "restore_inventory_match",
+        "clear_simulator_faults",
     ),
 }
 
@@ -65,12 +67,13 @@ def parse_product_toggle_action(action_id: str) -> tuple[str, bool] | None:
     return None
 
 
-def _action(label: str, action_id: str, variant: str = "default", enabled: bool = True) -> ActionButtonViewModel:
+def _action(
+    label: str, action_id: str, variant: str = "default", enabled: bool = True
+) -> ActionButtonViewModel:
     return ActionButtonViewModel(action_id, label, enabled)
 
 
 class ServicePresenter:
-
     def present_service_dashboard(
         self,
         diagnostics: DiagnosticsSnapshot,
@@ -83,8 +86,11 @@ class ServicePresenter:
         ms = diagnostics.machine
         total_devices = len(diagnostics.devices)
         ok_devices = sum(1 for d in diagnostics.devices if d.state in ("ok", "ready", "normal"))
-        state_color = "green" if ms.machine_state == "IDLE" else (
-            "red" if ms.machine_state in ("ERROR", "RECOVERY_PENDING") else "yellow")
+        state_color = (
+            "green"
+            if ms.machine_state == "IDLE"
+            else ("red" if ms.machine_state in ("ERROR", "RECOVERY_PENDING") else "yellow")
+        )
 
         kpi = ServiceKpiViewModel(
             machine_state=ms.machine_state,
@@ -110,45 +116,81 @@ class ServicePresenter:
         sim_available = {a for a in simulator_actions}
 
         service_groups: list[ServiceActionGroupViewModel] = []
-        service_groups.append(ServiceActionGroupViewModel("Управление", (
-            _action("Диагностика", "show_diagnostics", "primary"),
-            _action(lock_label, lock_action, "warning"),
-        )))
-        service_groups.append(ServiceActionGroupViewModel("Способы оплаты", (
-            _action("Наличные", "set_payment_methods:cash,sbp,card" if payment_methods else "set_payment_methods:cash"),
-            _action("Карта", "set_payment_methods:cash,card"),
-            _action("СБП", "set_payment_methods:cash,sbp"),
-        ), "compact"))
+        service_groups.append(
+            ServiceActionGroupViewModel(
+                "Управление",
+                (
+                    _action("Диагностика", "show_diagnostics", "primary"),
+                    _action(lock_label, lock_action, "warning"),
+                ),
+            )
+        )
+        service_groups.append(
+            ServiceActionGroupViewModel(
+                "Способы оплаты",
+                (
+                    _action(
+                        "Наличные",
+                        "set_payment_methods:cash,sbp,card"
+                        if payment_methods
+                        else "set_payment_methods:cash",
+                    ),
+                    _action("Карта", "set_payment_methods:cash,card"),
+                    _action("СБП", "set_payment_methods:cash,sbp"),
+                ),
+                "compact",
+            )
+        )
         if product_toggles:
-            service_groups.append(ServiceActionGroupViewModel("Товары (вкл/выкл)", product_toggles, "toggles"))
-        service_groups.append(ServiceActionGroupViewModel("Сброс и восстановление", (
-            _action("Сбросить блокировки", "clear_restricted_state", "danger"),
-            _action("Сбросить незаверш. транзакции", "clear_pending_transactions", "danger"),
-            _action("Тест печати", "print_test"),
-        )))
-        service_groups.append(ServiceActionGroupViewModel("Навигация", (
-            _action("Админ-панель", "show_admin", "primary"),
-            _action("Выйти из сервиса", "exit_service", "danger"),
-        )))
+            service_groups.append(
+                ServiceActionGroupViewModel("Товары (вкл/выкл)", product_toggles, "toggles")
+            )
+        service_groups.append(
+            ServiceActionGroupViewModel(
+                "Сброс и восстановление",
+                (
+                    _action("Сбросить блокировки", "clear_restricted_state", "danger"),
+                    _action(
+                        "Сбросить незаверш. транзакции", "clear_pending_transactions", "danger"
+                    ),
+                    _action("Тест печати", "print_test"),
+                ),
+            )
+        )
+        service_groups.append(
+            ServiceActionGroupViewModel(
+                "Навигация",
+                (
+                    _action("Админ-панель", "show_admin", "primary"),
+                    _action("Выйти из сервиса", "exit_service", "danger"),
+                ),
+            )
+        )
 
         sim_groups: list[ServiceActionGroupViewModel] = []
         for group_name, actions in _SIMULATOR_GROUPS.items():
             group_actions = tuple(
-                _action(label, aid)
-                for aid, label in actions.items()
-                if aid in sim_available
+                _action(label, aid) for aid, label in actions.items() if aid in sim_available
             )
             if group_actions:
                 sim_groups.append(ServiceActionGroupViewModel(group_name, group_actions))
 
         if "clear_simulator_faults" in sim_available:
-            sim_groups.append(ServiceActionGroupViewModel("Сброс симулятора", (
-                _action("Сбросить все ошибки симулятора", "clear_simulator_faults", "warning"),
-            )))
+            sim_groups.append(
+                ServiceActionGroupViewModel(
+                    "Сброс симулятора",
+                    (
+                        _action(
+                            "Сбросить все ошибки симулятора", "clear_simulator_faults", "warning"
+                        ),
+                    ),
+                )
+            )
 
         scenarios = tuple(
             _action(name, f"scenario:{name}", "primary")
-            for name in _SCENARIOS if any(a in sim_available for a in _SCENARIOS[name])
+            for name in _SCENARIOS
+            if any(a in sim_available for a in _SCENARIOS[name])
         )
         if scenarios:
             sim_groups.append(ServiceActionGroupViewModel("Сценарии", scenarios))

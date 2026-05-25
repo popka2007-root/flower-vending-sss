@@ -619,6 +619,7 @@ def dark_stylesheet() -> str:
 
 def is_dark_theme_time() -> bool:
     from datetime import datetime
+
     hour = datetime.now().hour
     return hour >= 20 or hour < 6
 

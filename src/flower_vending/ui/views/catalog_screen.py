@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPixmap, QPainter, QPainterPath, QBrush, QRegion
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPixmap, QPainter, QPainterPath, QBrush
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -24,14 +24,17 @@ from flower_vending.ui.viewmodels import CatalogItemViewModel, CatalogScreenView
 
 SP = 4
 
+
 def _px(n: float) -> int:
     return round(SP * n)
+
 
 # Градиент строго как на макете (розово-фиолетовый)
 GRADIENT = "qlineargradient(x1:0 y1:0, x2:1 y2:0, stop:0 #E13B9B, stop:1 #9F30ED)"
 GRADIENT_HOVER = "qlineargradient(x1:0 y1:0, x2:1 y2:0, stop:0 #EF4BB0, stop:1 #B24BF5)"
 
 _font_cache: dict[tuple[int, int], QFont] = {}
+
 
 def _f(size: int, weight: int = 400) -> QFont:
     key = (size, weight)
@@ -53,6 +56,7 @@ def _f(size: int, weight: int = 400) -> QFont:
     _font_cache[key] = f
     return f
 
+
 @dataclass
 class CartItem:
     product_id: str
@@ -62,6 +66,7 @@ class CartItem:
     currency: str
     image_path: str | None = None
     quantity: int = 1
+
 
 class _CartManager:
     def __init__(self) -> None:
@@ -75,17 +80,29 @@ class _CartManager:
         for cb in self._listeners:
             cb()
 
-    def add(self, product_id: str, slot_id: str, title: str, price_minor: int, currency: str = "RUB", image_path: str | None = None) -> None:
+    def add(
+        self,
+        product_id: str,
+        slot_id: str,
+        title: str,
+        price_minor: int,
+        currency: str = "RUB",
+        image_path: str | None = None,
+    ) -> None:
         for it in self.items:
             if it.product_id == product_id and it.slot_id == slot_id:
                 it.quantity += 1
                 self._notify()
                 return
-        self.items.append(CartItem(product_id, slot_id, title, price_minor, currency, image_path, 1))
+        self.items.append(
+            CartItem(product_id, slot_id, title, price_minor, currency, image_path, 1)
+        )
         self._notify()
 
     def remove(self, product_id: str, slot_id: str) -> None:
-        self.items = [i for i in self.items if not (i.product_id == product_id and i.slot_id == slot_id)]
+        self.items = [
+            i for i in self.items if not (i.product_id == product_id and i.slot_id == slot_id)
+        ]
         self._notify()
 
     def clear(self) -> None:
@@ -113,13 +130,16 @@ class _CartManager:
     def is_empty(self) -> bool:
         return len(self.items) == 0
 
+
 def _fmt_price(minor: int, currency: str = "RUB") -> str:
     rubles = minor // 100
     major = f"{rubles:,}".replace(",", " ")
     return f"{major} ₽"
 
+
 class _ProductCard(QFrame):
     """Карточка с идеальными скруглениями и мягкой, прозрачной тенью."""
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("ProductCardContainer")
@@ -133,6 +153,7 @@ class _ProductCard(QFrame):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self.inner.setGeometry(self.rect())
+
 
 class _PriceBadge(QWidget):
     def __init__(self, text: str, parent: QWidget | None = None) -> None:
@@ -161,6 +182,7 @@ class _PriceBadge(QWidget):
         painter.setFont(self._font)
         painter.drawText(r, Qt.AlignmentFlag.AlignCenter, self._text)
         painter.end()
+
 
 class CatalogScreenWidget(QWidget):
     product_selected = Signal(str, str)
@@ -191,7 +213,7 @@ class CatalogScreenWidget(QWidget):
         self.setStyleSheet(
             """
             QWidget#CustomerScreen {
-                background: #B8B8C8; 
+                background: #B8B8C8;
             }
             """
         )
@@ -202,7 +224,7 @@ class CatalogScreenWidget(QWidget):
         header_wrap.setObjectName("HeaderWrap")
         header_wrap.setFrameShape(QFrame.Shape.NoFrame)
         header_wrap.setStyleSheet("QFrame#HeaderWrap { background: #FFFFFF; border: none; }")
-        
+
         header_layout = QHBoxLayout(header_wrap)
         header_layout.setContentsMargins(40, 16, 40, 16)
         header_layout.setSpacing(16)
@@ -215,9 +237,11 @@ class CatalogScreenWidget(QWidget):
         self._flower_icon = QLabel()
         self._flower_icon.setFixedSize(36, 36)
         self._flower_icon.setStyleSheet("background: #E13B9B; border-radius: 8px;")
-        self._flower_icon.setPixmap(icon(IconName.SHOPPING_CART, 20, "#FFFFFF").pixmap(QSize(20, 20)))
+        self._flower_icon.setPixmap(
+            icon(IconName.SHOPPING_CART, 20, "#FFFFFF").pixmap(QSize(20, 20))
+        )
         self._flower_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
+
         self._hero_title = QLabel()
         self._hero_title.setFont(_f(22, 800))
         self._hero_title.setStyleSheet("color: #1A1A24;")
@@ -226,14 +250,14 @@ class CatalogScreenWidget(QWidget):
         self._hero_subtitle.setStyleSheet("color: #8E8E93;")
         self._hero_title.mousePressEvent = self._on_title_tap
         self._hero_subtitle.mousePressEvent = self._on_title_tap
-        
+
         logo_row.addWidget(self._flower_icon)
         logo_row.addWidget(self._hero_title)
         logo_row.addStretch(1)
-        
+
         logo_text_col.addLayout(logo_row)
         logo_text_col.addWidget(self._hero_subtitle)
-        
+
         header_layout.addLayout(logo_text_col, 1)
 
         self._cart_btn_wrap = QWidget()
@@ -296,7 +320,7 @@ class CatalogScreenWidget(QWidget):
 
         self._grid = QGridLayout()
         self._grid.setContentsMargins(40, 20, 40, 20)
-        self._grid.setSpacing(28) 
+        self._grid.setSpacing(28)
         self._grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         wrap_layout.addLayout(self._grid)
         wrap_layout.addStretch(1)
@@ -343,7 +367,9 @@ class CatalogScreenWidget(QWidget):
         close_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         close_btn.setFixedSize(36, 36)
         close_btn.setIcon(icon(IconName.X, 20, "#9CA3AF"))
-        close_btn.setStyleSheet("QPushButton { border: none; background: transparent; } QPushButton:hover { background: #F3F4F6; border-radius: 18px; }")
+        close_btn.setStyleSheet(
+            "QPushButton { border: none; background: transparent; } QPushButton:hover { background: #F3F4F6; border-radius: 18px; }"
+        )
         close_btn.clicked.connect(self._hide_cart)
         hl.addWidget(self._cart_title)
         hl.addStretch(1)
@@ -363,7 +389,9 @@ class CatalogScreenWidget(QWidget):
 
         footer = QFrame()
         footer.setObjectName("CartFooter")
-        footer.setStyleSheet("QFrame#CartFooter { background: #FFFFFF; border-top: 1px solid #F3F4F6; }")
+        footer.setStyleSheet(
+            "QFrame#CartFooter { background: #FFFFFF; border-top: 1px solid #F3F4F6; }"
+        )
         fl = QVBoxLayout(footer)
         fl.setContentsMargins(28, 24, 28, 28)
         fl.setSpacing(20)
@@ -387,15 +415,15 @@ class CatalogScreenWidget(QWidget):
         self._cart_checkout_btn.setFixedHeight(56)
         self._cart_checkout_btn.setFont(_f(16, 700))
         self._cart_checkout_btn.setStyleSheet(
-            f"""
-            QPushButton {{
+            """
+            QPushButton {
                 background: #6B7280;
                 border: none;
                 border-radius: 28px;
                 color: white;
-            }}
-            QPushButton:hover {{ background: #4B5563; }}
-            QPushButton:disabled {{ background: #E5E7EB; color: #9CA3AF; }}
+            }
+            QPushButton:hover { background: #4B5563; }
+            QPushButton:disabled { background: #E5E7EB; color: #9CA3AF; }
             """
         )
         self._cart_checkout_btn.clicked.connect(self._on_checkout)
@@ -420,7 +448,8 @@ class CatalogScreenWidget(QWidget):
             self._show_cart()
 
     def _show_cart(self) -> None:
-        if self._cart_open: return
+        if self._cart_open:
+            return
         self._cart_open = True
         drawer_w = self._cart_widget.width()
         self._overlay.setGeometry(0, 0, max(0, self.width() - drawer_w), self.height())
@@ -445,7 +474,8 @@ class CatalogScreenWidget(QWidget):
         self._cart_anim.start()
 
     def _hide_cart(self) -> None:
-        if not self._cart_open: return
+        if not self._cart_open:
+            return
         self._cart_open = False
         if self._cart_anim is not None:
             self._cart_anim.stop()
@@ -468,14 +498,16 @@ class CatalogScreenWidget(QWidget):
         self._cart_anim.start()
 
     def bind(self, model: CatalogScreenViewModel | object) -> None:
-        if not isinstance(model, CatalogScreenViewModel): return
+        if not isinstance(model, CatalogScreenViewModel):
+            return
         self._hero_title.setText(model.title)
         self._hero_subtitle.setText(model.subtitle)
         self._catalog_items = list(model.items)
         self._relayout_grid()
 
     def _relayout_grid(self) -> None:
-        if not self._catalog_items: return
+        if not self._catalog_items:
+            return
         cols = 3
         for i in reversed(range(self._grid.count())):
             item = self._grid.itemAt(i)
@@ -514,13 +546,19 @@ class CatalogScreenWidget(QWidget):
     @staticmethod
     def _get_rounded_pixmap(pix: QPixmap, w: int, h: int, radius: int) -> QPixmap:
         """Делает программную обрезку картинки, чтобы верхние углы были идеально круглыми."""
-        if pix.isNull() or w <= 0 or h <= 0: return pix
-        scaled = pix.scaled(w, h, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
+        if pix.isNull() or w <= 0 or h <= 0:
+            return pix
+        scaled = pix.scaled(
+            w,
+            h,
+            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+            Qt.TransformationMode.SmoothTransformation,
+        )
         # Центрируем кроп
         x = (scaled.width() - w) // 2
         y = (scaled.height() - h) // 2
         scaled = scaled.copy(x, y, w, h)
-        
+
         out = QPixmap(w, h)
         out.fill(Qt.GlobalColor.transparent)
         painter = QPainter(out)
@@ -537,13 +575,17 @@ class CatalogScreenWidget(QWidget):
         if not item.image_path:
             photo.setProperty("placeholder", True)
             photo.setPixmap(icon(IconName.FLOWER, 48, "#D1D5DB").pixmap(48, 48))
-            photo.setStyleSheet("background: #F3F4F6; border-top-left-radius: 24px; border-top-right-radius: 24px;")
+            photo.setStyleSheet(
+                "background: #F3F4F6; border-top-left-radius: 24px; border-top-right-radius: 24px;"
+            )
             return
         pix = QPixmap(item.image_path)
         if pix.isNull():
             photo.setProperty("placeholder", True)
             photo.setPixmap(icon(IconName.FLOWER, 48, "#D1D5DB").pixmap(48, 48))
-            photo.setStyleSheet("background: #F3F4F6; border-top-left-radius: 24px; border-top-right-radius: 24px;")
+            photo.setStyleSheet(
+                "background: #F3F4F6; border-top-left-radius: 24px; border-top-right-radius: 24px;"
+            )
             return
         photo.setProperty("placeholder", False)
         photo.setProperty("_source_pixmap", pix)
@@ -586,9 +628,14 @@ class CatalogScreenWidget(QWidget):
         def _reposition_children() -> None:
             pw = image_wrap.width()
             ph = image_wrap.height()
-            if pw <= 0 or ph <= 0: return
+            if pw <= 0 or ph <= 0:
+                return
             photo.setGeometry(0, 0, pw, ph)
-            if hasattr(photo, "_original_pixmap") and photo._original_pixmap and not photo._original_pixmap.isNull():
+            if (
+                hasattr(photo, "_original_pixmap")
+                and photo._original_pixmap
+                and not photo._original_pixmap.isNull()
+            ):
                 # Программное закругление
                 rounded = self._get_rounded_pixmap(photo._original_pixmap, pw, ph, 24)
                 photo.setPixmap(rounded)
@@ -672,12 +719,12 @@ class CatalogScreenWidget(QWidget):
         title = QLabel(item.title)
         title.setFont(_f(15, 600))
         title.setStyleSheet("color: #111827;")
-        
+
         # Строка с кол-вом и ценой под названием
         subtitle = QLabel(f"(1 шт.) - {_fmt_price(item.price_minor)}")
         subtitle.setFont(_f(13, 500))
         subtitle.setStyleSheet("color: #4B5563;")
-        
+
         info.addWidget(title)
         info.addWidget(subtitle)
         info.addStretch(1)
@@ -695,8 +742,12 @@ class CatalogScreenWidget(QWidget):
         minus_btn.setFixedSize(26, 26)
         minus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         minus_btn.setIcon(icon(IconName.MINUS, 14, "#374151"))
-        minus_btn.setStyleSheet("QPushButton { background: transparent; border: none; } QPushButton:hover { background: #F3F4F6; border-radius: 13px; }")
-        minus_btn.clicked.connect(lambda _checked=False, p=pid, s=sid: self._cart.update_qty(p, s, -1))
+        minus_btn.setStyleSheet(
+            "QPushButton { background: transparent; border: none; } QPushButton:hover { background: #F3F4F6; border-radius: 13px; }"
+        )
+        minus_btn.clicked.connect(
+            lambda _checked=False, p=pid, s=sid: self._cart.update_qty(p, s, -1)
+        )
 
         count_lbl = QLabel(str(item.quantity))
         count_lbl.setFont(_f(15, 600))
@@ -708,8 +759,12 @@ class CatalogScreenWidget(QWidget):
         plus_btn.setFixedSize(26, 26)
         plus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         plus_btn.setIcon(icon(IconName.PLUS, 14, "#9333EA"))
-        plus_btn.setStyleSheet("QPushButton { background: transparent; border: none; } QPushButton:hover { background: #F3F4F6; border-radius: 13px; }")
-        plus_btn.clicked.connect(lambda _checked=False, p=pid, s=sid: self._cart.update_qty(p, s, 1))
+        plus_btn.setStyleSheet(
+            "QPushButton { background: transparent; border: none; } QPushButton:hover { background: #F3F4F6; border-radius: 13px; }"
+        )
+        plus_btn.clicked.connect(
+            lambda _checked=False, p=pid, s=sid: self._cart.update_qty(p, s, 1)
+        )
 
         qty_inner.addWidget(minus_btn)
         qty_inner.addWidget(count_lbl)
@@ -737,13 +792,22 @@ class CatalogScreenWidget(QWidget):
         QTimer.singleShot(0, self._reposition_cart_badge)
 
     def _add_to_cart(self, item: CatalogItemViewModel) -> None:
-        if not item.enabled: return
-        self._cart.add(item.product_id, item.slot_id, item.title, item.price_minor_units, item.currency_code or "RUB", item.image_path)
+        if not item.enabled:
+            return
+        self._cart.add(
+            item.product_id,
+            item.slot_id,
+            item.title,
+            item.price_minor_units,
+            item.currency_code or "RUB",
+            item.image_path,
+        )
         self.selection_changed.emit(item.product_id, item.slot_id)
         self._show_cart()
 
     def _on_checkout(self) -> None:
-        if self._cart.is_empty: return
+        if self._cart.is_empty:
+            return
         self.checkout_requested.emit()
 
     def get_cart(self) -> _CartManager:

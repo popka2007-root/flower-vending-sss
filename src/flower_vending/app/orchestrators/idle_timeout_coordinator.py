@@ -54,7 +54,9 @@ class IdleTimeoutCoordinator:
             self._active_transaction_id = transaction_id
         else:
             active = self._transaction_coordinator.active()
-            self._active_transaction_id = active.transaction_id.value if active is not None else None
+            self._active_transaction_id = (
+                active.transaction_id.value if active is not None else None
+            )
 
     async def poll_once(self, *, correlation_id: str = "idle-timeout-supervisor") -> None:
         if self._idle_timeout_s <= 0:

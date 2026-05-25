@@ -81,7 +81,9 @@ class InventoryService:
         if product_id not in self._products:
             return False
         del self._products[product_id]
-        slots_to_remove = [sid for sid, s in self._slots.items() if s.product_id.value == product_id]
+        slots_to_remove = [
+            sid for sid, s in self._slots.items() if s.product_id.value == product_id
+        ]
         for sid in slots_to_remove:
             del self._slots[sid]
         return True

@@ -17,7 +17,9 @@ class UiRunnerTests(unittest.TestCase):
         payload = yaml.safe_load(
             (ROOT / "config" / "examples" / "machine.simulator.yaml").read_text(encoding="utf-8")
         )
-        payload["persistence"]["sqlite_path"] = str(tmp / "var" / "data" / "flower_vending_simulator.db")
+        payload["persistence"]["sqlite_path"] = str(
+            tmp / "var" / "data" / "flower_vending_simulator.db"
+        )
         payload["logging"]["directory"] = str(tmp / "var" / "log")
         config_path = tmp / "runtime.yaml"
         config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
@@ -29,7 +31,9 @@ class UiRunnerTests(unittest.TestCase):
             database_path = tmp / "var" / "data" / "flower_vending_simulator.db"
             database_path.parent.mkdir(parents=True, exist_ok=True)
             for suffix in ("", "-wal", "-shm", "-journal"):
-                database_path.with_name(database_path.name + suffix).write_text("state", encoding="utf-8")
+                database_path.with_name(database_path.name + suffix).write_text(
+                    "state", encoding="utf-8"
+                )
 
             with patch.dict(os.environ, {"FLOWER_VENDING_STATE_ROOT": str(tmp)}):
                 removed = reset_simulator_state(config_path=str(config_path))

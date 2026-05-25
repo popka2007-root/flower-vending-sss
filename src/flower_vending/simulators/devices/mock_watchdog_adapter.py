@@ -46,7 +46,9 @@ class MockWatchdogAdapter(MockManagedDevice, WatchdogAdapter):
                 SimulatorFaultCode.COMMAND_TIMEOUT,
                 SimulatorFaultCode.TRANSIENT_COMMAND_FAILURE,
             )
-            self._heartbeat(state=DeviceOperationalState.READY, armed_timeout_s=self._armed_timeout_s)
+            self._heartbeat(
+                state=DeviceOperationalState.READY, armed_timeout_s=self._armed_timeout_s
+            )
 
         await self._run_command("kick", operation)
 

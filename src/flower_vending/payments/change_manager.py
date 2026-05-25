@@ -5,7 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from flower_vending.devices.contracts import ChangeDispenseRequest, ChangeDispenseResult, PayoutStatus
+from flower_vending.devices.contracts import (
+    ChangeDispenseRequest,
+    ChangeDispenseResult,
+    PayoutStatus,
+)
 from flower_vending.devices.interfaces import ChangeDispenser
 from flower_vending.domain.entities import ChangeReserve, MoneyInventory, Transaction
 from flower_vending.domain.exceptions import ChangeUnavailableError, PartialPayoutError
@@ -49,7 +53,9 @@ class ChangeManager:
             return SaleChangeAssessment(False, True, 0, {})
         return SaleChangeAssessment(True, False, worst_case_change, plan)
 
-    async def reserve_for_transaction(self, transaction_id: str, plan: dict[int, int]) -> ChangeReserve:
+    async def reserve_for_transaction(
+        self, transaction_id: str, plan: dict[int, int]
+    ) -> ChangeReserve:
         return await self._inventory.reserve(transaction_id=transaction_id, plan=plan)
 
     async def finalize_reserve(self, transaction: Transaction) -> ChangeReserve | None:
@@ -121,7 +127,9 @@ class ChangeManager:
         plan = await self.plan_change(amount_minor_units)
         if plan is None:
             raise ChangeUnavailableError("unable to refund accepted cash safely")
-        reserve = await self._inventory.reserve(transaction_id=f"{transaction_id}:refund", plan=plan)
+        reserve = await self._inventory.reserve(
+            transaction_id=f"{transaction_id}:refund", plan=plan
+        )
         request = ChangeDispenseRequest(
             request_id=f"{transaction_id}:refund",
             counts_by_denomination=reserve.reserved_counts_by_denomination,
@@ -172,9 +180,7 @@ class ChangeManager:
         if self._inventory.exact_change_only:
             return 0
         denominations = tuple(
-            denomination
-            for denomination in self._accepted_bill_denominations
-            if denomination > 0
+            denomination for denomination in self._accepted_bill_denominations if denomination > 0
         )
         if not denominations:
             return 0

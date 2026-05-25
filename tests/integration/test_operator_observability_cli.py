@@ -70,7 +70,10 @@ class OperatorObservabilityCliTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(payload["limit"], 2)
             self.assertLessEqual(len(payload["events"]), 2)
             self.assertTrue(
-                any(event["correlation_id"] == "events-cli-correlation" for event in payload["events"])
+                any(
+                    event["correlation_id"] == "events-cli-correlation"
+                    for event in payload["events"]
+                )
             )
 
 
