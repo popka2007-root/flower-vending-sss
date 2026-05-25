@@ -111,10 +111,9 @@ class DBV300SDValidator(BillValidator):
                     name=f"{self.name}{_POLL_TASK_NAME_SUFFIX}",
                 )
                 self._started = True
-            except BaseException as exc:
-                if isinstance(exc, Exception):
-                    self._health = self._fault_health("startup_failed", str(exc))
-                if self._poll_task is not None:
+            except Exception as exc:
+                self._health = self._fault_health("startup_failed", str(exc))
+                if self._poll_task is not None and not self._started:
                     self._poll_task.cancel()
                     try:
                         await self._poll_task
