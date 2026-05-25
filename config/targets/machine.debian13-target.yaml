@@ -9,6 +9,10 @@ machine:
   policies:
     critical_temperature_celsius: 8.0
     pickup_timeout_s: 60.0
+  service_mode:
+    pin: "0000"
+    lock_purchase_button: false
+    visible_button: false
 
 runtime:
   health_poll_interval_s: 0.5

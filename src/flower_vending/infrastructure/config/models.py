@@ -35,13 +35,9 @@ class PaymentTerminalConfigModel(StrictModel):
 
 
 class ServiceModeConfig(StrictModel):
-    pin: str = "0000"
+    pin: str
     lock_purchase_button: bool = False
     visible_button: bool = False
-
-    @model_validator(mode="after")
-    def _validate_pin_not_default_in_production(self) -> "ServiceModeConfig":
-        return self
 
 
 class PaymentMethodsConfig(StrictModel):
@@ -56,7 +52,7 @@ class MachineConfig(StrictModel):
     currency: str = "RUB"
     startup_state: str = "SELF_TEST"
     policies: MachinePoliciesConfig = Field(default_factory=MachinePoliciesConfig)
-    service_mode: ServiceModeConfig = Field(default_factory=ServiceModeConfig)
+    service_mode: ServiceModeConfig
     payment_methods: PaymentMethodsConfig = Field(default_factory=PaymentMethodsConfig)
 
     @field_validator("machine_id", "currency", "startup_state")
