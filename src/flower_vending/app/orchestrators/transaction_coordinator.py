@@ -58,10 +58,7 @@ class TransactionCoordinator:
         price_minor_units: int,
         currency: str = "RUB",
     ) -> Transaction:
-        # Check if the existing active transaction is in a terminal state before rejecting.
-        # If it is terminal, it can be safely replaced, mitigating potential race
-        # conditions during concurrent state updates in the controller.
-        self._clear_active_if_terminal()
+        self._ensure_can_create_new_transaction()
         transaction = Transaction(
             transaction_id=TransactionId.new(),
             correlation_id=CorrelationId(correlation_id),
@@ -72,6 +69,22 @@ class TransactionCoordinator:
         self._transactions[transaction.transaction_id.value] = transaction
         self._active_transaction_id = transaction.transaction_id.value
         return transaction
+
+    def _ensure_can_create_new_transaction(self) -> None:
+        # Check if existing active transaction is terminal before rejecting.
+        # This closes the race window between mark_window_closed() and
+        # clear_active() in VendingController.confirm_pickup() (see A4, E2).
+        if self._active_transaction_id is not None:
+            existing = self._transactions.get(self._active_transaction_id)
+            if existing is not None:
+                if existing.status in {TransactionStatus.FAULTED, TransactionStatus.AMBIGUOUS}:
+                    raise TerminalLockedError("terminal is locked due to an unresolved error state")
+                elif existing.status in _TERMINAL_STATUSES:
+                    self._active_transaction_id = None
+                else:
+                    raise ConcurrencyConflictError("a transaction is already active")
+            else:
+                raise ConcurrencyConflictError("a transaction is already active")
 
     def get(self, transaction_id: str) -> Transaction | None:
         return self._transactions.get(transaction_id)
