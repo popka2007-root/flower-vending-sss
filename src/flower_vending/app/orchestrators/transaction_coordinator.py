@@ -19,9 +19,9 @@ from flower_vending.domain.value_objects import (
     TransactionId,
 )
 
-# Terminal states that allow a new transaction to safely replace the active one.
-# This prevents concurrency conflicts when a transaction is logically complete
-# but its active state has not yet been cleared by the controller.
+# Defined terminal states that permit a new transaction to replace the active one.
+# This prevents concurrency conflicts when confirm_pickup() or similar completes a
+# transaction but clear_active() hasn't run yet.
 _TERMINAL_STATUSES = {
     TransactionStatus.COMPLETED,
     TransactionStatus.CANCELLED,
@@ -36,6 +36,19 @@ class TransactionCoordinator:
         self._transactions: dict[str, Transaction] = {}
         self._active_transaction_id: str | None = None
 
+    def _clear_active_if_terminal(self) -> None:
+        if self._active_transaction_id is not None:
+            existing = self._transactions.get(self._active_transaction_id)
+            if existing is not None:
+                if existing.status in {TransactionStatus.FAULTED, TransactionStatus.AMBIGUOUS}:
+                    raise TerminalLockedError("terminal is locked due to an unresolved error state")
+                elif existing.status in _TERMINAL_STATUSES:
+                    self._active_transaction_id = None
+                else:
+                    raise ConcurrencyConflictError("a transaction is already active")
+            else:
+                raise ConcurrencyConflictError("a transaction is already active")
+
     def create_transaction(
         self,
         *,
@@ -48,17 +61,7 @@ class TransactionCoordinator:
         # Check if the existing active transaction is in a terminal state before rejecting.
         # If it is terminal, it can be safely replaced, mitigating potential race
         # conditions during concurrent state updates in the controller.
-        if self._active_transaction_id is not None:
-            existing = self._transactions.get(self._active_transaction_id)
-            if existing is not None:
-                if existing.status in {TransactionStatus.FAULTED, TransactionStatus.AMBIGUOUS}:
-                    raise TerminalLockedError("terminal is locked due to an unresolved error state")
-                elif existing.status in _TERMINAL_STATUSES:
-                    self._active_transaction_id = None
-                else:
-                    raise ConcurrencyConflictError("a transaction is already active")
-            else:
-                raise ConcurrencyConflictError("a transaction is already active")
+        self._clear_active_if_terminal()
         transaction = Transaction(
             transaction_id=TransactionId.new(),
             correlation_id=CorrelationId(correlation_id),
