@@ -113,6 +113,12 @@ class DBV300SDValidator(BillValidator):
                 self._started = True
             except Exception as exc:
                 self._health = self._fault_health("startup_failed", str(exc))
+                if self._poll_task is not None and not self._started:
+                    self._poll_task.cancel()
+                    try:
+                        await self._poll_task
+                    except asyncio.CancelledError:
+                        pass
                 self._poll_task = None
                 self._started = False
                 await self._safe_shutdown_transport()
