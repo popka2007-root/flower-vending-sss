@@ -14,7 +14,11 @@ from flower_vending.infrastructure.config.loader import build_device_settings_sn
 from flower_vending.infrastructure.config.models import AppConfig
 from flower_vending.app.logging import ApplicationLogger
 
-from flower_vending.infrastructure.logging.setup import StructuredLoggerAdapter, close_logging, configure_logging
+from flower_vending.infrastructure.logging.setup import (
+    StructuredLoggerAdapter,
+    close_logging,
+    configure_logging,
+)
 from flower_vending.infrastructure.persistence.journal import SQLiteTransactionJournal
 from flower_vending.infrastructure.persistence.sqlite import (
     AppliedConfigRepository,
@@ -67,7 +71,9 @@ class ProductionRuntimeEnvironment:
     async def start(self) -> None:
         if self._started:
             return
-        self.logger.info("production_runtime_starting", extra={"machine_id": self.config.machine.machine_id})
+        self.logger.info(
+            "production_runtime_starting", extra={"machine_id": self.config.machine.machine_id}
+        )
 
         startup_ok = True
         for device in self.devices.startup_order():
@@ -75,22 +81,31 @@ class ProductionRuntimeEnvironment:
                 await device.start()
                 self.logger.info("device_started", extra={"device": device.name})
             except Exception as exc:
-                self.logger.warning("device_start_failed", extra={
-                    "device": device.name, "error": str(exc),
-                })
+                self.logger.warning(
+                    "device_start_failed",
+                    extra={
+                        "device": device.name,
+                        "error": str(exc),
+                    },
+                )
                 startup_ok = False
 
         if not startup_ok:
-            self.logger.warning("production_startup_degraded", extra={
-                "message": "Some devices failed to start. Continuing in degraded mode.",
-            })
+            self.logger.warning(
+                "production_startup_degraded",
+                extra={
+                    "message": "Some devices failed to start. Continuing in degraded mode.",
+                },
+            )
 
         await self._restore_runtime_state()
         await self.core.start_runtime()
         await self._complete_startup_flow()
         self._persist_runtime_snapshot()
         self._started = True
-        self.logger.info("production_runtime_started", extra={"state": self.core.fsm.current_state.value})
+        self.logger.info(
+            "production_runtime_started", extra={"state": self.core.fsm.current_state.value}
+        )
 
     async def stop(self) -> None:
         if not self._started:
@@ -117,15 +132,26 @@ class ProductionRuntimeEnvironment:
                 "sale_blockers": list(diagnostics.machine.sale_blockers),
                 "service_mode": diagnostics.machine.service_mode,
             },
-            "devices": [{"device_name": d.device_name, "state": d.state} for d in diagnostics.devices],
-            "recent_events": [{"event_type": e.event_type, "correlation_id": e.correlation_id, "summary": str(e.summary)[:100]} for e in diagnostics.recent_events],
+            "devices": [
+                {"device_name": d.device_name, "state": d.state} for d in diagnostics.devices
+            ],
+            "recent_events": [
+                {
+                    "event_type": e.event_type,
+                    "correlation_id": e.correlation_id,
+                    "summary": str(e.summary)[:100],
+                }
+                for e in diagnostics.recent_events
+            ],
         }
 
     async def _restore_runtime_state(self) -> None:
         unresolved = tuple(self.repositories.transactions.list_unresolved())
         self.core.transaction_coordinator.restore_transactions(unresolved)
         if unresolved:
-            self.core.machine_status_service.set_active_transaction(unresolved[0].transaction_id.value)
+            self.core.machine_status_service.set_active_transaction(
+                unresolved[0].transaction_id.value
+            )
             self.core.machine_status_service.block_sales("recovery_pending")
             self.core.fsm.force_state(MachineState.RECOVERY_PENDING, "restored")
             self.core.machine_status_service.set_machine_state(self.core.fsm.current_state)
@@ -151,7 +177,9 @@ async def build_production_environment(
     config_path: str | Path,
     prepare_directories: bool = True,
 ) -> ProductionRuntimeEnvironment:
-    config, yaml_text, report = validate_config_file(config_path, prepare_directories=prepare_directories)
+    config, yaml_text, report = validate_config_file(
+        config_path, prepare_directories=prepare_directories
+    )
     if not report.valid:
         errors = [m.message for m in report.messages if m.severity == "error"]
         raise ValueError("; ".join(errors))
@@ -178,10 +206,16 @@ async def build_production_environment(
         operational_events=OperationalEventRepository(database),
     )
     logger = configure_logging(
-        config.logging.model_copy(update={"directory": str(resolve_runtime_path(runtime_state_root, config.logging.directory))})
+        config.logging.model_copy(
+            update={
+                "directory": str(resolve_runtime_path(runtime_state_root, config.logging.directory))
+            }
+        )
     )
     if config.runtime.persist_applied_config:
-        repositories.applied_config.save_snapshot(source_path=str(report.config_path), yaml_text=yaml_text)
+        repositories.applied_config.save_snapshot(
+            source_path=str(report.config_path), yaml_text=yaml_text
+        )
     for device_name, device_config in build_device_settings_snapshot(config).items():
         repositories.device_settings.save(
             logical_device_name=device_name,
@@ -189,7 +223,12 @@ async def build_production_environment(
             config=device_config,
         )
 
-    _seed_catalog(repositories, config.catalog.items, currency_code=config.machine.currency, enabled=config.runtime.seed_demo_data)
+    _seed_catalog(
+        repositories,
+        config.catalog.items,
+        currency_code=config.machine.currency,
+        enabled=config.runtime.seed_demo_data,
+    )
     inventory_service = _load_inventory_service(repositories)
     money_inventory = _load_money_inventory(repositories, config)
     devices = _build_production_devices(config)
@@ -202,7 +241,9 @@ async def build_production_environment(
         inventory_service=inventory_service,
         money_inventory=money_inventory,
         devices=devices.managed(),
-        accepted_bill_denominations=tuple(config.devices.bill_validator.accepted_denominations_minor),
+        accepted_bill_denominations=tuple(
+            config.devices.bill_validator.accepted_denominations_minor
+        ),
         door_sensor=devices.door_sensor,
         temperature_sensor=devices.temperature_sensor,
         inventory_sensor=None,
@@ -218,8 +259,11 @@ async def build_production_environment(
     )
     event_store = RecentEventStore(limit=config.runtime.event_log_limit)
     projector = RuntimePersistenceProjector(
-        repositories=repositories, config=config, core=core,
-        money_inventory=money_inventory, logger=logger,
+        repositories=repositories,
+        config=config,
+        core=core,
+        money_inventory=money_inventory,
+        logger=logger,
     )
     core.event_bus.subscribe_best_effort("*", event_store.handle)
     for event_type in PERSISTENCE_EVENT_TYPES:
@@ -236,9 +280,17 @@ async def build_production_environment(
     )
 
     return ProductionRuntimeEnvironment(
-        config=config, config_path=report.config_path, report=report,
-        logger=logger, repositories=repositories, devices=devices,
-        inventory_service=inventory_service, money_inventory=money_inventory,
-        core=core, ui_facade=ui_facade, event_store=event_store,
-        platform_profile=report.platform_profile, yaml_text=yaml_text,
+        config=config,
+        config_path=report.config_path,
+        report=report,
+        logger=logger,
+        repositories=repositories,
+        devices=devices,
+        inventory_service=inventory_service,
+        money_inventory=money_inventory,
+        core=core,
+        ui_facade=ui_facade,
+        event_store=event_store,
+        platform_profile=report.platform_profile,
+        yaml_text=yaml_text,
     )

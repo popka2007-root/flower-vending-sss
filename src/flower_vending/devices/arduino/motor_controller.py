@@ -89,8 +89,11 @@ class ArduinoMotorController(MotorController):
 
     def _slot_to_number(self, slot_id: str) -> int:
         mapping = {
-            "A1": 1, "A2": 2,
-            "B1": 3, "B2": 4,
-            "C1": 5, "C2": 6,
+            "A1": 1,
+            "A2": 2,
+            "B1": 3,
+            "B2": 4,
+            "C1": 5,
+            "C2": 6,
         }
         return mapping.get(slot_id.upper(), 1)

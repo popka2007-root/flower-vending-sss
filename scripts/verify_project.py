@@ -163,7 +163,10 @@ async def _scenario_cancel_after_cash_refunds() -> None:
 async def _run_runtime_scenarios() -> bool:
     scenarios: tuple[tuple[str, Callable[[], Awaitable[None]]], ...] = (
         ("service door blocks sale on startup health check", _scenario_service_door_blocks_sale),
-        ("validator background loop processes inserted bill", _scenario_validator_loop_processes_bill),
+        (
+            "validator background loop processes inserted bill",
+            _scenario_validator_loop_processes_bill,
+        ),
         ("unsafe multi-note change path is blocked", _scenario_multi_note_unsafe_change_is_blocked),
         ("cancel after accepted cash dispenses refund", _scenario_cancel_after_cash_refunds),
     )

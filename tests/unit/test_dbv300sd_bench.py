@@ -92,18 +92,17 @@ class DBV300SDBenchTests(unittest.IsolatedAsyncioTestCase):
                 serial_module=_FakeSerialModule(fake_port),
             )
             result = await bench.run(
-                tx_payload=b"\x01\xFF",
+                tx_payload=b"\x01\xff",
                 read_size=2,
                 correlation_id="exchange-1",
             )
             records = [
-                json.loads(line)
-                for line in trace_log.read_text(encoding="utf-8").splitlines()
+                json.loads(line) for line in trace_log.read_text(encoding="utf-8").splitlines()
             ]
 
         self.assertEqual(result.wrote_bytes, 2)
         self.assertEqual(result.read_bytes, 2)
-        self.assertEqual(fake_port.writes, [b"\x01\xFF"])
+        self.assertEqual(fake_port.writes, [b"\x01\xff"])
         self.assertTrue(fake_port.reset_input_buffer_called)
 
         self.assertEqual(records[1]["direction"], "tx")
@@ -125,7 +124,7 @@ class DBV300SDBenchTests(unittest.IsolatedAsyncioTestCase):
                 await bench.run(read_size=1)
 
     def test_parse_hex_bytes_requires_explicit_valid_hex(self) -> None:
-        self.assertEqual(parse_hex_bytes("0x01, 02 FF"), b"\x01\x02\xFF")
+        self.assertEqual(parse_hex_bytes("0x01, 02 FF"), b"\x01\x02\xff")
         with self.assertRaises(ConfigurationError):
             parse_hex_bytes("")
         with self.assertRaises(ConfigurationError):

@@ -22,7 +22,14 @@ from flower_vending.domain.entities import (
     TransactionStatus,
 )
 from flower_vending.domain.entities.transaction import DispenseStatus
-from flower_vending.domain.value_objects import Amount, CorrelationId, Currency, ProductId, SlotId, TransactionId
+from flower_vending.domain.value_objects import (
+    Amount,
+    CorrelationId,
+    Currency,
+    ProductId,
+    SlotId,
+    TransactionId,
+)
 
 
 def _now() -> datetime:
@@ -96,7 +103,9 @@ def slot_from_row(row: Any) -> Slot:
     )
 
 
-def machine_status_to_record(status: MachineStatus, *, machine_id: str, updated_at: str) -> dict[str, Any]:
+def machine_status_to_record(
+    status: MachineStatus, *, machine_id: str, updated_at: str
+) -> dict[str, Any]:
     return {
         "machine_id": machine_id,
         "machine_state": status.machine_state,
@@ -111,7 +120,9 @@ def machine_status_to_record(status: MachineStatus, *, machine_id: str, updated_
     }
 
 
-def machine_status_from_row(row: Any, *, sale_blockers: list[str], warnings: list[str]) -> MachineStatus:
+def machine_status_from_row(
+    row: Any, *, sale_blockers: list[str], warnings: list[str]
+) -> MachineStatus:
     return MachineStatus(
         machine_state=row["machine_state"],
         service_mode=bool(row["service_mode"]),

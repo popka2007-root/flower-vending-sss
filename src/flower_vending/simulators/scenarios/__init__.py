@@ -1,6 +1,9 @@
 """Deterministic simulator scenarios."""
 
-from flower_vending.simulators.scenarios.catalog import SCENARIO_REGISTRY, run_default_scenario_suite
+from flower_vending.simulators.scenarios.catalog import (
+    SCENARIO_REGISTRY,
+    run_default_scenario_suite,
+)
 from flower_vending.simulators.scenarios.customer_flows import run_happy_path_scenario
 from flower_vending.simulators.scenarios.fault_flows import (
     run_bill_jam_scenario,

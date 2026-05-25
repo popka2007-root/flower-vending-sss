@@ -8,7 +8,11 @@ from typing import Any
 
 from flower_vending.devices.dbv300sd.config import SerialTransportSettings
 from flower_vending.devices.dbv300sd.transport.base import DBV300Transport
-from flower_vending.devices.exceptions import ConfigurationError, DeviceNotStartedError, TransportIOError
+from flower_vending.devices.exceptions import (
+    ConfigurationError,
+    DeviceNotStartedError,
+    TransportIOError,
+)
 
 pyserial: ModuleType | None
 try:

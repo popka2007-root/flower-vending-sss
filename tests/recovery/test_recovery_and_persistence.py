@@ -13,7 +13,11 @@ from flower_vending.domain.entities import RecoveryStatus, TransactionStatus
 from flower_vending.domain.events.payment_events import payment_event
 from flower_vending.domain.exceptions import SaleBlockedError
 from flower_vending.infrastructure.persistence.journal import SQLiteTransactionJournal
-from flower_vending.infrastructure.persistence.sqlite import SQLiteDatabase, TransactionRepository, ensure_sqlite_schema
+from flower_vending.infrastructure.persistence.sqlite import (
+    SQLiteDatabase,
+    TransactionRepository,
+    ensure_sqlite_schema,
+)
 from flower_vending.runtime.bootstrap import build_simulator_environment
 from flower_vending.simulators.faults import SimulatorFaultCode
 from flower_vending.simulators.harness import SimulationHarness
@@ -38,7 +42,9 @@ class RecoveryAndPersistenceTests(unittest.IsolatedAsyncioTestCase):
             harness = SimulationHarness.build()
             await harness.start()
             try:
-                transaction_id = await harness.start_purchase(correlation_id="reboot-mid-transaction")
+                transaction_id = await harness.start_purchase(
+                    correlation_id="reboot-mid-transaction"
+                )
                 transaction = harness.core.transaction_coordinator.require(transaction_id)
                 transaction.status = TransactionStatus.WAITING_FOR_PAYMENT
 
@@ -113,7 +119,9 @@ class RecoveryAndPersistenceTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(len(unresolved), 1)
                     self.assertEqual(unresolved[0].entry_name, "motor_vend_requested")
                     self.assertIn(transaction_id, unresolved[0].idempotency_key or "")
-                    self.assertIn("handle_vend_authorized.vend_motor", unresolved[0].idempotency_key or "")
+                    self.assertIn(
+                        "handle_vend_authorized.vend_motor", unresolved[0].idempotency_key or ""
+                    )
                     self.assertGreater(intent_row_id, 0)
 
                     journal.record_outcome(
@@ -221,6 +229,7 @@ class RecoveryAndPersistenceTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(plan.reason, "ambiguous_side_effect")
         finally:
             await harness.stop()
+
 
 if __name__ == "__main__":
     unittest.main()

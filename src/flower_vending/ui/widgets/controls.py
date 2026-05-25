@@ -49,7 +49,14 @@ def repolish(widget: QWidget) -> None:
 
 
 class TouchButton(QPushButton):
-    def __init__(self, label: str, *, secondary: bool = False, compact: bool = False, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        label: str,
+        *,
+        secondary: bool = False,
+        compact: bool = False,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(label, parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setProperty("secondary", secondary)

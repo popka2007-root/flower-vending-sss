@@ -30,9 +30,7 @@ class DiagnosticsScreenWidget(QWidget):
 
         header = QHBoxLayout()
         title = QLabel("Диагностика")
-        title.setStyleSheet(
-            f"font-size: 28px; font-weight: {Typography.WEIGHTS['bold']};"
-        )
+        title.setStyleSheet(f"font-size: 28px; font-weight: {Typography.WEIGHTS['bold']};")
         header.addWidget(title)
         header.addStretch(1)
 
@@ -51,8 +49,7 @@ class DiagnosticsScreenWidget(QWidget):
 
         state_card = QWidget()
         state_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; "
-            f"border: none;"
+            f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;"
         )
         state_layout = QVBoxLayout(state_card)
         state_layout.setContentsMargins(20, 16, 20, 16)
@@ -71,8 +68,7 @@ class DiagnosticsScreenWidget(QWidget):
 
         blockers_card = QWidget()
         blockers_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; "
-            f"border: none;"
+            f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;"
         )
         blockers_layout = QVBoxLayout(blockers_card)
         blockers_layout.setContentsMargins(20, 16, 20, 16)
@@ -92,8 +88,7 @@ class DiagnosticsScreenWidget(QWidget):
 
         devices_card = QWidget()
         devices_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; "
-            f"border: none;"
+            f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;"
         )
         devices_layout = QVBoxLayout(devices_card)
         devices_layout.setContentsMargins(20, 16, 20, 16)
@@ -110,8 +105,7 @@ class DiagnosticsScreenWidget(QWidget):
 
         events_card = QWidget()
         events_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; "
-            f"border: none;"
+            f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;"
         )
         events_layout = QVBoxLayout(events_card)
         events_layout.setContentsMargins(20, 16, 20, 16)
@@ -194,7 +188,12 @@ class DiagnosticsScreenWidget(QWidget):
         layout.setContentsMargins(0, 4, 0, 4)
         layout.setSpacing(8)
 
-        color_map = {"green": BrandColors.GREEN_600, "yellow": "#CA8A04", "red": BrandColors.RED_600, "gray": BrandColors.GRAY_500}
+        color_map = {
+            "green": BrandColors.GREEN_600,
+            "yellow": "#CA8A04",
+            "red": BrandColors.RED_600,
+            "gray": BrandColors.GRAY_500,
+        }
         dot_color = color_map.get(device.state_color, color_map["gray"])
         dot = QLabel("●")
         dot.setStyleSheet(f"color: {dot_color}; font-size: 16px;")

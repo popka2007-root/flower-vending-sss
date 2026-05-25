@@ -71,7 +71,9 @@ class ArduinoWindowController(WindowController):
         try:
             status = await self._transport.command_status()
             pos = status.get("door", self._position.value)
-            self._position = WindowPosition(pos.upper()) if pos.upper() in ("OPEN", "CLOSED") else self._position
+            self._position = (
+                WindowPosition(pos.upper()) if pos.upper() in ("OPEN", "CLOSED") else self._position
+            )
         except Exception:
             pass
         return WindowStatus(

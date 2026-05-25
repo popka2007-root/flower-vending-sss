@@ -183,7 +183,9 @@ class CheckoutFlow(QWidget):
         self._order_card = QWidget()
         self._order_card.setStyleSheet("background:#F9FAFB; border-radius:14px;")
         self._order_card_layout = QVBoxLayout(self._order_card)
-        self._order_card_layout.setContentsMargins(_px(self, 5), _px(self, 4), _px(self, 5), _px(self, 4))
+        self._order_card_layout.setContentsMargins(
+            _px(self, 5), _px(self, 4), _px(self, 5), _px(self, 4)
+        )
         self._order_card_layout.setSpacing(_px(self, 1))
 
         order_wrap = QWidget()

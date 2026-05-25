@@ -48,9 +48,7 @@ class PickupTimeoutIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(harness.core.fsm.current_state, MachineState.IDLE)
             self.assertEqual(transaction.status, TransactionStatus.COMPLETED)
             self.assertNotIn("pickup_timeout_elapsed", harness.recorder.event_types)
-            self.assertIsNone(
-                harness.core.pickup_timeout_coordinator.deadline_for(transaction_id)
-            )
+            self.assertIsNone(harness.core.pickup_timeout_coordinator.deadline_for(transaction_id))
         finally:
             await harness.stop()
 
@@ -97,7 +95,9 @@ class PickupTimeoutIntegrationTests(unittest.IsolatedAsyncioTestCase):
             [transaction],
             active_transaction_id=transaction.transaction_id.value,
         )
-        restarted.core.machine_status_service.set_active_transaction(transaction.transaction_id.value)
+        restarted.core.machine_status_service.set_active_transaction(
+            transaction.transaction_id.value
+        )
         restarted.core.fsm.force_state(
             MachineState.WAITING_FOR_CUSTOMER_PICKUP,
             "test_restored_waiting_pickup",

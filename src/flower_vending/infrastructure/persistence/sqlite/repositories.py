@@ -256,7 +256,9 @@ class MoneyInventoryRepository:
         inventory_id: str = "main",
         _connection: sqlite3.Connection | None = None,
     ) -> None:
-        record = money_inventory_to_record(inventory, inventory_id=inventory_id, updated_at=_utc_now_iso())
+        record = money_inventory_to_record(
+            inventory, inventory_id=inventory_id, updated_at=_utc_now_iso()
+        )
         self._database.execute(
             """
             INSERT INTO money_inventory (
@@ -460,7 +462,9 @@ class TransactionRepository:
         return tuple(
             transaction_from_row(
                 row,
-                payment_session_json=self._database.loads(row["payment_session_json"], default=None),
+                payment_session_json=self._database.loads(
+                    row["payment_session_json"], default=None
+                ),
                 change_reserve_json=self._database.loads(row["change_reserve_json"], default=None),
             )
             for row in rows
@@ -659,7 +663,9 @@ class OperationalEventRepository:
             (limit,),
         )
         rows = [*service_rows, *temperature_rows]
-        rows.sort(key=lambda row: (row["occurred_at"], row["source"], row["event_id"]), reverse=True)
+        rows.sort(
+            key=lambda row: (row["occurred_at"], row["source"], row["event_id"]), reverse=True
+        )
         return tuple(self._event_row_to_dict(row) for row in rows[:limit])
 
     def _event_row_to_dict(self, row: Any) -> dict[str, Any]:
@@ -675,6 +681,7 @@ class OperationalEventRepository:
             "payload": self._database.loads(row["payload_json"], default={}) or {},
             "occurred_at": row["occurred_at"],
         }
+
 
 class DeviceSettingsRepository:
     def __init__(self, database: SQLiteDatabase) -> None:

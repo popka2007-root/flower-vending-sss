@@ -78,14 +78,10 @@ class VendingController(TransactionJournalingMixin):
             price_minor_units=command.price_minor_units,
             currency=command.currency,
         )
-        self._machine_status_service.set_active_transaction(
-            transaction.transaction_id.value
-        )
+        self._machine_status_service.set_active_transaction(transaction.transaction_id.value)
         self._fsm.transition(MachineState.PRODUCT_SELECTED, "product_selected")
         await self._motor_controller.stop_motion()
-        self._fsm.transition(
-            MachineState.CHECKING_AVAILABILITY, "availability_check_requested"
-        )
+        self._fsm.transition(MachineState.CHECKING_AVAILABILITY, "availability_check_requested")
         self._machine_status_service.ensure_sales_allowed()
         self._fsm.transition(MachineState.CHECKING_CHANGE, "change_check_requested")
         self._fsm.transition(MachineState.WAITING_FOR_PAYMENT, "waiting_for_payment")
@@ -129,9 +125,7 @@ class VendingController(TransactionJournalingMixin):
             logical_step="confirm_pickup.close_window",
         )
         try:
-            await self._window_controller.close_window(
-                correlation_id=command.correlation_id
-            )
+            await self._window_controller.close_window(correlation_id=command.correlation_id)
         except Exception as exc:
             transaction.mark_faulted()
             self._record_outcome(
@@ -290,9 +284,7 @@ class VendingController(TransactionJournalingMixin):
             outcome=JournalOutcome.SUCCEEDED,
         )
         transaction.mark_window_opened()
-        self._fsm.transition(
-            MachineState.WAITING_FOR_CUSTOMER_PICKUP, "delivery_window_opened"
-        )
+        self._fsm.transition(MachineState.WAITING_FOR_CUSTOMER_PICKUP, "delivery_window_opened")
         self._machine_status_service.set_machine_state(self._fsm.current_state)
         await self._event_bus.publish(
             vending_event(
@@ -302,9 +294,7 @@ class VendingController(TransactionJournalingMixin):
             )
         )
 
-    async def handle_toggle_product(
-        self, command: ToggleProductCommand
-    ) -> tuple[str, bool]:
+    async def handle_toggle_product(self, command: ToggleProductCommand) -> tuple[str, bool]:
         product, slot = self._inventory_service.set_product_enabled(
             command.product_id,
             command.enabled,

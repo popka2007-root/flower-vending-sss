@@ -12,7 +12,9 @@ from flower_vending.infrastructure.config.models import (
 
 
 def load_machine_config(path: str) -> AppConfig:
-    from flower_vending.infrastructure.config.loader import load_machine_config as _load_machine_config
+    from flower_vending.infrastructure.config.loader import (
+        load_machine_config as _load_machine_config,
+    )
 
     return _load_machine_config(path)
 

@@ -104,7 +104,9 @@ class MockManagedDevice(ManagedDevice):
         self._injector.clear()
         self._health = replace(self._health, faults=(), state=DeviceOperationalState.READY)
 
-    def _activate_fault(self, code: str, message: str, *, critical: bool = True, **details: Any) -> None:
+    def _activate_fault(
+        self, code: str, message: str, *, critical: bool = True, **details: Any
+    ) -> None:
         self._health = DeviceHealth(
             name=self.name,
             state=DeviceOperationalState.FAULT if critical else DeviceOperationalState.DEGRADED,

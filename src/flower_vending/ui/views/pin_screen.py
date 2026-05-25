@@ -66,9 +66,7 @@ class PinScreenWidget(QWidget):
 
         title = QLabel("Введите\nпароль")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet(
-            "color: #FFFFFF; font-size: 28px; font-weight: 700;"
-        )
+        title.setStyleSheet("color: #FFFFFF; font-size: 28px; font-weight: 700;")
         inner.addWidget(title, 0, Qt.AlignmentFlag.AlignCenter)
 
         sub = QLabel("Админ-панель")
@@ -203,24 +201,27 @@ class PinScreenWidget(QWidget):
         anim = QPropertyAnimation(self, b"pos")
         anim.setDuration(400)
         anim.setEasingCurve(QEasingCurve.Type.InOutSine)
-        anim.setKeyValues([
-            (0.0, original),
-            (0.1, original + self._delta_x(-10)),
-            (0.2, original + self._delta_x(10)),
-            (0.3, original + self._delta_x(-10)),
-            (0.4, original + self._delta_x(10)),
-            (0.5, original + self._delta_x(-6)),
-            (0.6, original + self._delta_x(6)),
-            (0.7, original + self._delta_x(-3)),
-            (0.8, original + self._delta_x(3)),
-            (1.0, original),
-        ])
-        anim.finished.connect(lambda: setattr(self, '_shaking', False))
+        anim.setKeyValues(
+            [
+                (0.0, original),
+                (0.1, original + self._delta_x(-10)),
+                (0.2, original + self._delta_x(10)),
+                (0.3, original + self._delta_x(-10)),
+                (0.4, original + self._delta_x(10)),
+                (0.5, original + self._delta_x(-6)),
+                (0.6, original + self._delta_x(6)),
+                (0.7, original + self._delta_x(-3)),
+                (0.8, original + self._delta_x(3)),
+                (1.0, original),
+            ]
+        )
+        anim.finished.connect(lambda: setattr(self, "_shaking", False))
         anim.start()
 
     @staticmethod
     def _delta_x(dx: int):
         from PySide6.QtCore import QPoint
+
         return QPoint(dx, 0)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
