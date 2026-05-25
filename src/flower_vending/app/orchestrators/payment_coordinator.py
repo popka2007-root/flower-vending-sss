@@ -4,14 +4,8 @@ from __future__ import annotations
 
 from flower_vending.app.event_bus import EventBus
 from flower_vending.app.fsm import MachineState, StateMachineEngine
-from flower_vending.app.journal import (
-    ApplicationJournal,
-    JournalOutcome,
-    NoopApplicationJournal,
-)
-from flower_vending.app.orchestrators.transaction_coordinator import (
-    TransactionCoordinator,
-)
+from flower_vending.app.journal import ApplicationJournal, JournalOutcome, NoopApplicationJournal
+from flower_vending.app.orchestrators.transaction_coordinator import TransactionCoordinator
 from flower_vending.app.services.machine_status_service import MachineStatusService
 from flower_vending.devices.contracts import BillValidatorEvent, BillValidatorEventType
 from flower_vending.devices.interfaces import BillValidator
@@ -19,13 +13,11 @@ from flower_vending.domain.aggregates import PurchaseTransactionAggregate
 from flower_vending.domain.entities import PaymentStatus, Transaction
 from flower_vending.domain.events.device_events import device_event
 from flower_vending.domain.events.payment_events import payment_event
-from flower_vending.domain.exceptions import (
-    ChangeUnavailableError,
-    ValidatorUnavailableError,
-)
+from flower_vending.domain.exceptions import ChangeUnavailableError, ValidatorUnavailableError
 from flower_vending.payments.change_manager import ChangeManager
-from flower_vending.app.orchestrators.mixins import TransactionJournalingMixin
 
+
+from flower_vending.app.orchestrators.mixins import TransactionJournalingMixin
 
 class PaymentCoordinator(TransactionJournalingMixin):
     def __init__(
@@ -47,17 +39,13 @@ class PaymentCoordinator(TransactionJournalingMixin):
         self._machine_status_service = machine_status_service
         self._journal = journal or NoopApplicationJournal()
 
-    async def start_cash_session(
-        self, transaction_id: str, correlation_id: str
-    ) -> Transaction:
+    async def start_cash_session(self, transaction_id: str, correlation_id: str) -> Transaction:
         self._machine_status_service.ensure_sales_allowed()
         transaction = self._transaction_coordinator.require(transaction_id)
         assessment = await self._change_manager.assess_sale(transaction)
         self._machine_status_service.set_exact_change_only(assessment.exact_change_only)
         if not assessment.sale_supported:
-            raise ChangeUnavailableError(
-                "cash sale is unsafe because change cannot be guaranteed"
-            )
+            raise ChangeUnavailableError("cash sale is unsafe because change cannot be guaranteed")
         if assessment.plan:
             reserve = await self._change_manager.reserve_for_transaction(
                 transaction_id=transaction.transaction_id.value,
@@ -111,23 +99,15 @@ class PaymentCoordinator(TransactionJournalingMixin):
         )
         return transaction
 
-    async def process_validator_event(
-        self, event: BillValidatorEvent
-    ) -> Transaction | None:
+    async def process_validator_event(self, event: BillValidatorEvent) -> Transaction | None:
         transaction = self._transaction_coordinator.active()
-        correlation_id = event.correlation_id or (
-            transaction.correlation_id.value if transaction else "machine"
-        )
+        correlation_id = event.correlation_id or (transaction.correlation_id.value if transaction else "machine")
         await self._event_bus.publish(
             device_event(
                 event.event_type.value,
                 correlation_id=correlation_id,
-                transaction_id=(
-                    transaction.transaction_id.value if transaction else None
-                ),
-                bill_minor_units=(
-                    event.bill_value.minor_units if event.bill_value else None
-                ),
+                transaction_id=transaction.transaction_id.value if transaction else None,
+                bill_minor_units=event.bill_value.minor_units if event.bill_value else None,
                 details=dict(event.details),
             )
         )
@@ -140,9 +120,7 @@ class PaymentCoordinator(TransactionJournalingMixin):
             self._machine_status_service.block_sales("validator_fault")
             self._fsm.transition(MachineState.FAULT, "validator_fault")
             self._machine_status_service.set_machine_state(self._fsm.current_state)
-            raise ValidatorUnavailableError(
-                f"validator fault for transaction {transaction.transaction_id.value}"
-            )
+            raise ValidatorUnavailableError(f"validator fault for transaction {transaction.transaction_id.value}")
         if event.event_type is BillValidatorEventType.BILL_STACKED:
             if event.bill_value is None:
                 raise ValueError("bill_stacked requires bill_value")
@@ -155,8 +133,7 @@ class PaymentCoordinator(TransactionJournalingMixin):
                     accepted_minor_units=transaction.accepted_amount.minor_units,
                     remaining_minor_units=max(
                         0,
-                        transaction.price.minor_units
-                        - transaction.accepted_amount.minor_units,
+                        transaction.price.minor_units - transaction.accepted_amount.minor_units,
                     ),
                 )
             )
@@ -173,9 +150,7 @@ class PaymentCoordinator(TransactionJournalingMixin):
             logical_step="complete_payment.disable_acceptance",
         )
         try:
-            await self._validator.disable_acceptance(
-                correlation_id=transaction.correlation_id.value
-            )
+            await self._validator.disable_acceptance(correlation_id=transaction.correlation_id.value)
         except Exception as exc:
             transaction.mark_ambiguous()
             self._enter_recovery_pending("validator_disable_recovery_required")
@@ -200,9 +175,7 @@ class PaymentCoordinator(TransactionJournalingMixin):
             await self._change_manager.finalize_reserve(transaction)
             if transaction.change_due.minor_units > 0:
                 transaction.mark_change_pending()
-                self._fsm.transition(
-                    MachineState.DISPENSING_CHANGE, "change_dispense_requested"
-                )
+                self._fsm.transition(MachineState.DISPENSING_CHANGE, "change_dispense_requested")
                 self._machine_status_service.set_machine_state(self._fsm.current_state)
                 self._record_intent(
                     transaction,
@@ -255,13 +228,9 @@ class PaymentCoordinator(TransactionJournalingMixin):
             except Exception:
                 transaction.mark_ambiguous()
                 if self._fsm.can_transition(MachineState.MANUAL_REVIEW):
-                    self._fsm.transition(
-                        MachineState.MANUAL_REVIEW, "change_failed_refund_failed"
-                    )
+                    self._fsm.transition(MachineState.MANUAL_REVIEW, "change_failed_refund_failed")
                 else:
-                    self._fsm.force_state(
-                        MachineState.MANUAL_REVIEW, "change_failed_refund_failed"
-                    )
+                    self._fsm.force_state(MachineState.MANUAL_REVIEW, "change_failed_refund_failed")
                 self._machine_status_service.set_machine_state(self._fsm.current_state)
                 await self._event_bus.publish(
                     payment_event(
@@ -302,9 +271,7 @@ class PaymentCoordinator(TransactionJournalingMixin):
             )
         return transaction
 
-    async def cancel_purchase(
-        self, transaction_id: str, correlation_id: str
-    ) -> Transaction:
+    async def cancel_purchase(self, transaction_id: str, correlation_id: str) -> Transaction:
         transaction = self._transaction_coordinator.require(transaction_id)
         self._record_intent(
             transaction,
@@ -352,9 +319,7 @@ class PaymentCoordinator(TransactionJournalingMixin):
         self._machine_status_service.set_active_transaction(None)
         return transaction
 
-    async def _refund_cancelled_cash(
-        self, transaction: Transaction, correlation_id: str
-    ) -> None:
+    async def _refund_cancelled_cash(self, transaction: Transaction, correlation_id: str) -> None:
         if transaction.change_reserve is not None:
             await self._change_manager.inventory.release(transaction.change_reserve)
             transaction.change_reserve = None
