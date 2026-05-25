@@ -22,7 +22,13 @@ from flower_vending.domain.value_objects import (
 # FIX: Terminal states that allow a new transaction to replace the active one.
 # Prevents ConcurrencyConflictError when confirm_pickup() completes a transaction
 # but clear_active() hasn't run yet (see E2).
-_TERMINAL_STATUSES = {TransactionStatus.COMPLETED, TransactionStatus.CANCELLED}
+_TERMINAL_STATUSES = {
+    TransactionStatus.COMPLETED,
+    TransactionStatus.CANCELLED,
+    TransactionStatus.FAULTED,
+    TransactionStatus.AMBIGUOUS,
+    TransactionStatus.PICKUP_TIMED_OUT,
+}
 
 
 class TransactionCoordinator:
