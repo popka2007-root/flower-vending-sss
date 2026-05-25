@@ -110,6 +110,7 @@ class DBV300SDValidator(BillValidator):
                 )
             except Exception as exc:
                 self._health = self._fault_health("startup_failed", str(exc))
+                self._poll_task = None
                 self._started = False
                 await self._safe_shutdown_transport()
                 raise
