@@ -109,8 +109,8 @@ def format_discovery(results: dict[str, Any], legacy_format: bool = False) -> st
     ]
     if results.get("port"):
         lines.append(f"ESP32 found on: {results['port']}")
-        lines.append(f"Description: {results['description']}")
-        lines.append(f"Status response: {results['response']}")
+        lines.append(f"Description: {results.get('description', 'unknown')}")
+        lines.append(f"Status response: {results.get('response', 'unknown')}")
     else:
         lines.append("ESP32 not found. Available ports:")
         for port in list_com_ports():
