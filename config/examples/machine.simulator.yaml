@@ -27,7 +27,7 @@ catalog:
     - product_id: roses_ecuador_7
       slot_id: A1
       name: roses_ecuador_7
-      display_name: Весенний микс
+      display_name: Розы Эквадор 7 шт.
       category: bouquets
       price_minor_units: 150000
       quantity: 4

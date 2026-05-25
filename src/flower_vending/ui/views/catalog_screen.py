@@ -609,9 +609,11 @@ class CatalogScreenWidget(QWidget):
         self._relayout_grid()
 
     def _render_categories(self) -> None:
-        while (item := self._categories_layout.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
+        for i in reversed(range(self._categories_layout.count())):
+            item = self._categories_layout.takeAt(i)
+            if item is not None:
+                if w := item.widget():
+                    w.deleteLater()
 
         for category in self._categories:
             btn = QPushButton(category.label)
