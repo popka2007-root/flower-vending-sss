@@ -78,6 +78,9 @@ class DBV300SDValidator(BillValidator):
                 "protocol_kind": config.protocol_kind.value,
             },
         )
+        self._consecutive_faults = 0
+        self._backoff_factor = 2.0
+        self._max_backoff_s = 30.0
 
     @property
     def name(self) -> str:
@@ -92,37 +95,26 @@ class DBV300SDValidator(BillValidator):
                 return
             self._health = replace(self._health, state=DeviceOperationalState.INITIALIZING)
             await self._transport.open()
-            # FIX: Zombie poll task guard — if start() fails AFTER create_task
-            # but BEFORE _started = True, the poll task runs on a half-initialized
-            # transport. We create the task last and track it so the except
-            # handler can cancel it.
-            poll_task: asyncio.Task[None] | None = None
             try:
                 await self._protocol.initialize(self._transport)
                 if self._config.startup_disable_acceptance:
                     await self._protocol.set_acceptance_enabled(self._transport, False)
                 self._acceptance_enabled = False
                 self._stop_requested.clear()
-                poll_task = asyncio.create_task(
-                    self._poll_loop(),
-                    name=f"{self.name}{_POLL_TASK_NAME_SUFFIX}",
-                )
-                self._poll_task = poll_task
-                self._started = True
                 self._health = replace(
                     self._health,
                     state=DeviceOperationalState.READY,
                     last_heartbeat_at=utc_now(),
                 )
+                self._poll_task = asyncio.create_task(
+                    self._poll_loop(),
+                    name=f"{self.name}{_POLL_TASK_NAME_SUFFIX}",
+                )
+                self._started = True
             except Exception as exc:
                 self._health = self._fault_health("startup_failed", str(exc))
-                # FIX: Cancel poll task if created before _started was set
-                if poll_task is not None and not self._started:
-                    poll_task.cancel()
-                    try:
-                        await poll_task
-                    except asyncio.CancelledError:
-                        pass
+                self._poll_task = None
+                self._started = False
                 await self._safe_shutdown_transport()
                 raise
 
@@ -227,13 +219,23 @@ class DBV300SDValidator(BillValidator):
         except asyncio.TimeoutError:
             return None
 
+    def _reset_fault_counter(self) -> None:
+        self._consecutive_faults = 0
+
+    def _increment_fault_counter(self) -> None:
+        self._consecutive_faults += 1
+
+    async def _apply_backoff(self) -> None:
+        poll_interval = self._config.poll_interval_s
+        if self._consecutive_faults > 0:
+            poll_interval = min(
+                poll_interval * (self._backoff_factor ** min(self._consecutive_faults, 5)),
+                self._max_backoff_s,
+            )
+        await asyncio.sleep(poll_interval)
+
     async def _poll_loop(self) -> None:
-        # FIX: Fault backoff counter — after consecutive faults the poll
-        # interval increases exponentially to prevent flooding the event
-        # bus with thousands of VALIDATOR_FAULT events per second (see E9).
-        consecutive_faults = 0
-        backoff_factor = 2.0
-        max_backoff_s = 30.0
+        self._reset_fault_counter()
         while not self._stop_requested.is_set():
             try:
                 protocol_events = await self._protocol.poll(self._transport)
@@ -245,22 +247,16 @@ class DBV300SDValidator(BillValidator):
                 )
                 for event in protocol_events:
                     await self._emit_event(self._translate_event(event))
-                consecutive_faults = 0
+                self._reset_fault_counter()
             except asyncio.CancelledError:
                 raise
             except HardwareConfirmationRequiredError as exc:
-                await self._handle_fault(exc)
+                self._health = self._fault_health("hardware_confirmation_required", str(exc))
                 return
             except Exception as exc:
                 await self._handle_fault(exc)
-                consecutive_faults += 1
-            poll_interval = self._config.poll_interval_s
-            if consecutive_faults > 0:
-                poll_interval = min(
-                    poll_interval * (backoff_factor ** min(consecutive_faults, 5)),
-                    max_backoff_s,
-                )
-            await asyncio.sleep(poll_interval)
+                self._increment_fault_counter()
+            await self._apply_backoff()
 
     async def _emit_event(self, event: BillValidatorEvent) -> None:
         if event.event_type is BillValidatorEventType.VALIDATOR_DISABLED:

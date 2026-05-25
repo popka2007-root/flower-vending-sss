@@ -9,7 +9,7 @@ If a future change adds async I/O to any method, add asyncio.Lock.
 from __future__ import annotations
 
 from flower_vending.domain.entities import RecoveryStatus, Transaction, TransactionStatus
-from flower_vending.domain.exceptions import ConcurrencyConflictError
+from flower_vending.domain.exceptions import ConcurrencyConflictError, TransactionRecoveryError
 from flower_vending.domain.value_objects import (
     Amount,
     CorrelationId,
@@ -22,7 +22,13 @@ from flower_vending.domain.value_objects import (
 # FIX: Terminal states that allow a new transaction to replace the active one.
 # Prevents ConcurrencyConflictError when confirm_pickup() completes a transaction
 # but clear_active() hasn't run yet (see E2).
-_TERMINAL_STATUSES = {TransactionStatus.COMPLETED, TransactionStatus.CANCELLED}
+_TERMINAL_STATUSES = {
+    TransactionStatus.COMPLETED,
+    TransactionStatus.CANCELLED,
+    TransactionStatus.FAULTED,
+    TransactionStatus.AMBIGUOUS,
+    TransactionStatus.PICKUP_TIMED_OUT,
+}
 
 
 class TransactionCoordinator:
@@ -85,9 +91,11 @@ class TransactionCoordinator:
             transaction.transaction_id.value: transaction for transaction in transactions
         }
         if active_transaction_id is not None:
-            self._active_transaction_id = (
-                active_transaction_id if active_transaction_id in self._transactions else None
-            )
+            if active_transaction_id not in self._transactions:
+                raise TransactionRecoveryError(
+                    f"active_transaction_id {active_transaction_id} not found in restored set"
+                )
+            self._active_transaction_id = active_transaction_id
             return
         for transaction in transactions:
             if transaction.status not in _TERMINAL_STATUSES:

@@ -162,8 +162,8 @@ class ProductDetailsScreenWidget(QWidget):
                 self._photo.setText("")
 
         pm_layout = self._payment_methods_wrap.layout()
-        while pm_layout.count():
-            item = pm_layout.takeAt(0)
+        for i in reversed(range(pm_layout.count())):
+            item = pm_layout.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
 
