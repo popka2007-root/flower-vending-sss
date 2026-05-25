@@ -81,12 +81,17 @@ class ServiceScreenWidget(QWidget):
 
     @staticmethod
     def _clear_layout(layout: QLayout) -> None:
-        while (item := layout.takeAt(0)) is not None:
-            if w := item.widget():
+        for i in reversed(range(layout.count())):
+            item = layout.takeAt(i)
+            if item is None:
+                continue
+            w = item.widget()
+            if w is not None:
                 w.setParent(None)
                 w.deleteLater()
                 continue
-            if subl := item.layout():
+            subl = item.layout()
+            if subl is not None:
                 ServiceScreenWidget._clear_layout(subl)
 
     def bind(self, model: ServiceScreenViewModel | object) -> None:

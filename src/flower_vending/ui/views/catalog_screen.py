@@ -518,9 +518,10 @@ class CatalogScreenWidget(QWidget):
         if not self._catalog_items:
             return
         cols = 3
-        while (item := self._grid.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
+        for i in reversed(range(self._grid.count())):
+            item = self._grid.takeAt(i)
+            if item is not None and item.widget() is not None:
+                item.widget().deleteLater()
         for idx, item in enumerate(self._catalog_items):
             row = idx // cols
             col = idx % cols
@@ -779,9 +780,10 @@ class CatalogScreenWidget(QWidget):
         return row
 
     def _refresh_cart_ui(self) -> None:
-        while (item := self._cart_items_layout.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
+        for i in reversed(range(self._cart_items_layout.count())):
+            item = self._cart_items_layout.takeAt(i)
+            if item is not None and item.widget() is not None:
+                item.widget().deleteLater()
         for it in self._cart.items:
             self._cart_items_layout.addWidget(self._make_cart_item_row(it))
         self._cart_items_layout.addStretch(1)

@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QProgressBar,
-    QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -177,9 +176,10 @@ class PaymentScreenWidget(QWidget):
         if is_cash:
             self._update_progress(model)
 
-        while (item := self._sim_layout.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
+        for i in reversed(range(self._sim_layout.count())):
+            item = self._sim_layout.takeAt(i)
+            if item is not None and item.widget() is not None:
+                item.widget().deleteLater()
 
         for action in model.quick_insert_actions:
             btn = QPushButton(action.label)

@@ -162,9 +162,10 @@ class ProductDetailsScreenWidget(QWidget):
                 self._photo.setText("")
 
         pm_layout = self._payment_methods_wrap.layout()
-        while (item := pm_layout.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
+        for i in reversed(range(pm_layout.count())):
+            item = pm_layout.takeAt(i)
+            if item is not None and item.widget() is not None:
+                item.widget().deleteLater()
 
         pm_layout.addStretch(1)
         for method in model.payment_methods:
