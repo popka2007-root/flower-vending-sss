@@ -86,7 +86,9 @@ async def test_reserve_with_insufficient_funds_raises_error(inventory: MoneyInve
     plan = {10: 10}  # We only have 5 total, and 1 is reserved (4 available)
 
     # Verify that an exception is raised
-    with pytest.raises(ChangeUnavailableError, match="insufficient change inventory for requested reserve"):
+    with pytest.raises(
+        ChangeUnavailableError, match="insufficient change inventory for requested reserve"
+    ):
         await inventory.reserve("txn-123", plan)
 
     # Verify state remains unchanged
@@ -106,6 +108,7 @@ async def test_consume_success(inventory: MoneyInventory) -> None:
     # After consume, accounting counts drop, and reserved counts drop
     assert inventory.accounting_counts_by_denomination == {10: 4, 5: 8, 1: 20}
     assert inventory.reserved_counts_by_denomination == {10: 1, 5: 2}
+
 
 @pytest.mark.asyncio
 async def test_available_counts(inventory: MoneyInventory) -> None:
@@ -133,7 +136,7 @@ async def test_can_reserve_success(inventory: MoneyInventory) -> None:
 
 @pytest.mark.asyncio
 async def test_can_reserve_insufficient(inventory: MoneyInventory) -> None:
-    plan = {10: 5} # We have 5 total, 1 reserved -> 4 available
+    plan = {10: 5}  # We have 5 total, 1 reserved -> 4 available
     can_reserve = await inventory.can_reserve(plan)
     assert can_reserve is False
 
@@ -153,7 +156,7 @@ async def test_release_success(inventory: MoneyInventory) -> None:
 async def test_release_bounds_to_zero(inventory: MoneyInventory) -> None:
     reserve = ChangeReserve(
         transaction_id="txn-release",
-        reserved_counts_by_denomination={10: 5}, # more than what's reserved
+        reserved_counts_by_denomination={10: 5},  # more than what's reserved
         currency=Currency("USD"),
     )
     await inventory.release(reserve)
@@ -164,3 +167,30 @@ def test_clear_drift(inventory: MoneyInventory) -> None:
     inventory.drift_detected = True
     inventory.clear_drift()
     assert inventory.drift_detected is False
+
+
+def test_add_success(inventory: MoneyInventory) -> None:
+    # Add to existing denomination
+    inventory.add(10, 2)
+    # Add to new denomination
+    inventory.add(50, 1)
+
+    assert inventory.accounting_counts_by_denomination == {10: 7, 5: 10, 1: 20, 50: 1}
+
+
+def test_add_zero_is_noop(inventory: MoneyInventory) -> None:
+    # Adding zero to existing
+    inventory.add(10, 0)
+    # Adding zero to new denomination
+    inventory.add(20, 0)
+
+    # State remains completely unchanged
+    assert inventory.accounting_counts_by_denomination == {10: 5, 5: 10, 1: 20}
+
+
+def test_add_negative_raises_error(inventory: MoneyInventory) -> None:
+    with pytest.raises(DomainValidationError, match="cannot add negative counts"):
+        inventory.add(10, -1)
+
+    # State remains unchanged
+    assert inventory.accounting_counts_by_denomination == {10: 5, 5: 10, 1: 20}
