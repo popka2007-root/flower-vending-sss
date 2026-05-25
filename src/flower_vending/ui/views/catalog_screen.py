@@ -464,7 +464,7 @@ class CatalogScreenWidget(QWidget):
             self._overlay.setGeometry(0, 0, max(0, self.width() - drawer_w), self.height())
         else:
             self._overlay.setGeometry(0, 0, self.width(), self.height())
-        self._relayout_grid()
+        QTimer.singleShot(0, self._reposition_all_badges)
         QTimer.singleShot(0, self._reposition_cart_badge)
 
     def _toggle_cart(self) -> None:
@@ -731,8 +731,13 @@ class CatalogScreenWidget(QWidget):
                 and not photo._original_pixmap.isNull()
             ):
                 # Программное закругление
-                rounded = self._get_rounded_pixmap(photo._original_pixmap, pw, ph, 24)
-                photo.setPixmap(rounded)
+                last_w = getattr(photo, "_last_w", -1)
+                last_h = getattr(photo, "_last_h", -1)
+                if pw != last_w or ph != last_h:
+                    rounded = self._get_rounded_pixmap(photo._original_pixmap, pw, ph, 24)
+                    photo.setPixmap(rounded)
+                    photo._last_w = pw
+                    photo._last_h = ph
             price_badge.move(pw - price_badge.width() - 16, 16)
             price_badge.raise_()
 
