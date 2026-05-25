@@ -17,6 +17,7 @@ from flower_vending.domain.commands.purchase_commands import (
     StartPurchase,
 )
 from flower_vending.domain.commands.service_commands import ToggleProductCommand
+from flower_vending.app.orchestrators.journaling_mixin import JournalingMixin
 from flower_vending.domain.entities import Transaction
 from flower_vending.domain.events import DomainEvent
 from flower_vending.domain.events.machine_events import machine_event
@@ -25,7 +26,7 @@ from flower_vending.domain.events.vending_events import vending_event
 from flower_vending.domain.exceptions import InventoryMismatchError
 
 
-class VendingController:
+class VendingController(JournalingMixin):
     def __init__(
         self,
         *,
@@ -274,23 +275,6 @@ class VendingController:
             )
         )
 
-    def _record_intent(
-        self,
-        transaction: Transaction,
-        *,
-        action_name: str,
-        logical_step: str,
-        **payload: object,
-    ) -> None:
-        self._journal.record_intent(
-            action_name=action_name,
-            correlation_id=transaction.correlation_id.value,
-            transaction_id=transaction.transaction_id.value,
-            logical_step=logical_step,
-            machine_state=self._fsm.current_state.value,
-            transaction_status=transaction.status.value,
-            payload=dict(payload),
-        )
 
     async def handle_toggle_product(self, command: ToggleProductCommand) -> tuple[str, bool]:
         product, slot = self._inventory_service.set_product_enabled(
@@ -309,22 +293,3 @@ class VendingController:
         )
         return command.product_id, state
 
-    def _record_outcome(
-        self,
-        transaction: Transaction,
-        *,
-        action_name: str,
-        logical_step: str,
-        outcome: JournalOutcome,
-        **payload: object,
-    ) -> None:
-        self._journal.record_outcome(
-            action_name=action_name,
-            outcome=outcome,
-            correlation_id=transaction.correlation_id.value,
-            transaction_id=transaction.transaction_id.value,
-            logical_step=logical_step,
-            machine_state=self._fsm.current_state.value,
-            transaction_status=transaction.status.value,
-            payload=dict(payload),
-        )

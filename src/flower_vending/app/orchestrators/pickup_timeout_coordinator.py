@@ -11,13 +11,14 @@ from flower_vending.app.journal import ApplicationJournal, JournalOutcome, NoopA
 from flower_vending.app.orchestrators.transaction_coordinator import TransactionCoordinator
 from flower_vending.app.services.machine_status_service import MachineStatusService
 from flower_vending.devices.interfaces import WindowController
+from flower_vending.app.orchestrators.journaling_mixin import JournalingMixin
 from flower_vending.domain.entities import Transaction, TransactionStatus
 from flower_vending.domain.events import DomainEvent
 from flower_vending.domain.events.machine_events import machine_event
 from flower_vending.domain.events.vending_events import vending_event
 
 
-class PickupTimeoutCoordinator:
+class PickupTimeoutCoordinator(JournalingMixin):
     def __init__(
         self,
         *,
@@ -241,43 +242,7 @@ class PickupTimeoutCoordinator:
     def _deadline_for_transaction(self, transaction: Transaction) -> datetime:
         return transaction.updated_at + timedelta(seconds=self._pickup_timeout_s)
 
-    def _record_intent(
-        self,
-        transaction: Transaction,
-        *,
-        action_name: str,
-        logical_step: str,
-        **payload: object,
-    ) -> None:
-        self._journal.record_intent(
-            action_name=action_name,
-            correlation_id=transaction.correlation_id.value,
-            transaction_id=transaction.transaction_id.value,
-            logical_step=logical_step,
-            machine_state=self._fsm.current_state.value,
-            transaction_status=transaction.status.value,
-            payload=dict(payload),
-        )
 
-    def _record_outcome(
-        self,
-        transaction: Transaction,
-        *,
-        action_name: str,
-        logical_step: str,
-        outcome: JournalOutcome,
-        **payload: object,
-    ) -> None:
-        self._journal.record_outcome(
-            action_name=action_name,
-            outcome=outcome,
-            correlation_id=transaction.correlation_id.value,
-            transaction_id=transaction.transaction_id.value,
-            logical_step=logical_step,
-            machine_state=self._fsm.current_state.value,
-            transaction_status=transaction.status.value,
-            payload=dict(payload),
-        )
 
     def _now(self) -> datetime:
         return datetime.now(tz=timezone.utc)

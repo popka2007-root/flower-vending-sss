@@ -10,6 +10,7 @@ from flower_vending.app.services.machine_status_service import MachineStatusServ
 from flower_vending.devices.contracts import BillValidatorEvent, BillValidatorEventType
 from flower_vending.devices.interfaces import BillValidator
 from flower_vending.domain.aggregates import PurchaseTransactionAggregate
+from flower_vending.app.orchestrators.journaling_mixin import JournalingMixin
 from flower_vending.domain.entities import PaymentStatus, Transaction
 from flower_vending.domain.events.device_events import device_event
 from flower_vending.domain.events.payment_events import payment_event
@@ -17,7 +18,7 @@ from flower_vending.domain.exceptions import ChangeUnavailableError, ValidatorUn
 from flower_vending.payments.change_manager import ChangeManager
 
 
-class PaymentCoordinator:
+class PaymentCoordinator(JournalingMixin):
     def __init__(
         self,
         *,
@@ -403,40 +404,4 @@ class PaymentCoordinator:
             self._fsm.force_state(MachineState.RECOVERY_PENDING, reason)
         self._machine_status_service.set_machine_state(self._fsm.current_state)
 
-    def _record_intent(
-        self,
-        transaction: Transaction,
-        *,
-        action_name: str,
-        logical_step: str,
-        **payload: object,
-    ) -> None:
-        self._journal.record_intent(
-            action_name=action_name,
-            correlation_id=transaction.correlation_id.value,
-            transaction_id=transaction.transaction_id.value,
-            logical_step=logical_step,
-            machine_state=self._fsm.current_state.value,
-            transaction_status=transaction.status.value,
-            payload=dict(payload),
-        )
 
-    def _record_outcome(
-        self,
-        transaction: Transaction,
-        *,
-        action_name: str,
-        logical_step: str,
-        outcome: JournalOutcome,
-        **payload: object,
-    ) -> None:
-        self._journal.record_outcome(
-            action_name=action_name,
-            outcome=outcome,
-            correlation_id=transaction.correlation_id.value,
-            transaction_id=transaction.transaction_id.value,
-            logical_step=logical_step,
-            machine_state=self._fsm.current_state.value,
-            transaction_status=transaction.status.value,
-            payload=dict(payload),
-        )
