@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from flower_vending.devices.contracts import DeviceCommandPolicy, DeviceOperationalState, WindowPosition, WindowStatus
+from flower_vending.devices.contracts import (
+    DeviceCommandPolicy,
+    DeviceOperationalState,
+    WindowPosition,
+    WindowStatus,
+)
 from flower_vending.devices.exceptions import DeviceAdapterError
 from flower_vending.devices.interfaces import WindowController
 from flower_vending.simulators.devices.base import MockManagedDevice
@@ -17,7 +22,9 @@ class MockWindowController(MockManagedDevice, WindowController):
         command_policy: DeviceCommandPolicy | None = None,
     ) -> None:
         super().__init__(name, command_policy=command_policy)
-        self._status = WindowStatus(controller_name=name, position=WindowPosition.CLOSED, locked=False)
+        self._status = WindowStatus(
+            controller_name=name, position=WindowPosition.CLOSED, locked=False
+        )
 
     async def open_window(self, correlation_id: str | None = None) -> None:
         async def operation() -> None:
@@ -37,8 +44,12 @@ class MockWindowController(MockManagedDevice, WindowController):
                     **plan.details,
                 )
                 raise DeviceAdapterError(plan.message or "window fault")
-            self._status = WindowStatus(controller_name=self.name, position=WindowPosition.OPEN, locked=False)
-            self._heartbeat(state=DeviceOperationalState.READY, position=self._status.position.value)
+            self._status = WindowStatus(
+                controller_name=self.name, position=WindowPosition.OPEN, locked=False
+            )
+            self._heartbeat(
+                state=DeviceOperationalState.READY, position=self._status.position.value
+            )
 
         await self._run_command(
             "open_window",
@@ -65,8 +76,12 @@ class MockWindowController(MockManagedDevice, WindowController):
                     **plan.details,
                 )
                 raise DeviceAdapterError(plan.message or "window fault")
-            self._status = WindowStatus(controller_name=self.name, position=WindowPosition.CLOSED, locked=False)
-            self._heartbeat(state=DeviceOperationalState.READY, position=self._status.position.value)
+            self._status = WindowStatus(
+                controller_name=self.name, position=WindowPosition.CLOSED, locked=False
+            )
+            self._heartbeat(
+                state=DeviceOperationalState.READY, position=self._status.position.value
+            )
 
         await self._run_command(
             "close_window",

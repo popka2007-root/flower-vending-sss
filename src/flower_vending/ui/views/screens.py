@@ -13,8 +13,15 @@ from flower_vending.ui.views.product_details_screen import ProductDetailsScreenW
 from flower_vending.ui.views.payment_screen import PaymentScreenWidget
 
 __all__ = [
-    "CatalogScreenWidget", "CheckoutFlow", "DeliveryScreenWidget",
-    "DiagnosticsScreenWidget", "PaymentScreenWidget", "PinScreenWidget",
-    "ProductDetailsScreenWidget", "ServiceScreenWidget", "StatusScreenWidget",
-    "ThankYouScreenWidget", "AdminShell",
+    "CatalogScreenWidget",
+    "CheckoutFlow",
+    "DeliveryScreenWidget",
+    "DiagnosticsScreenWidget",
+    "PaymentScreenWidget",
+    "PinScreenWidget",
+    "ProductDetailsScreenWidget",
+    "ServiceScreenWidget",
+    "StatusScreenWidget",
+    "ThankYouScreenWidget",
+    "AdminShell",
 ]

@@ -41,12 +41,14 @@ def list_com_ports() -> list[dict[str, str]]:
         import serial.tools.list_ports as lp
 
         for port in lp.comports():
-            result.append({
-                "device": port.device,
-                "description": port.description,
-                "hwid": port.hwid,
-                "manufacturer": port.manufacturer or "",
-            })
+            result.append(
+                {
+                    "device": port.device,
+                    "description": port.description,
+                    "hwid": port.hwid,
+                    "manufacturer": port.manufacturer or "",
+                }
+            )
     except Exception:
         pass
     return result
@@ -86,7 +88,22 @@ async def discover_arduino() -> dict[str, Any]:
     return {"port": "", "description": "not found", "response": "", "type": "unknown"}
 
 
-def format_discovery(results: dict[str, Any]) -> str:
+def format_discovery(results: dict[str, Any], legacy_format: bool = False) -> str:
+    """Format discovery results as human-readable report."""
+    if legacy_format:
+        lines = ["Device Discovery Report", "======================="]
+        for category, items in results.items():
+            lines.append(f"\n{category}:")
+            if isinstance(items, list):
+                for item in items:
+                    lines.append(f"  - {item}")
+            elif isinstance(items, dict):
+                for k, v in items.items():
+                    lines.append(f"  {k}: {v}")
+            else:
+                lines.append(f"  {items}")
+        return "\n".join(lines)
+
     lines = [
         "--- COM Port Discovery ---",
     ]

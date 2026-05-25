@@ -65,7 +65,9 @@ class StateMachineEngine:
 
     def force_state(self, target_state: MachineState, reason: str) -> StateTransitionRecord:
         """Force a state for controlled recovery or bootstrap scenarios."""
-        logger.warning("force_state: %s -> %s, reason=%s", self._state.value, target_state.value, reason)
+        logger.warning(
+            "force_state: %s -> %s, reason=%s", self._state.value, target_state.value, reason
+        )
         record = StateTransitionRecord(self._state, target_state, reason)
         self._history.append(record)
         self._state = target_state

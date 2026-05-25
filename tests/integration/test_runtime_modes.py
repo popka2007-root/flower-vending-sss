@@ -57,7 +57,12 @@ class RuntimeModeIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     correlation_id=environment.ui_facade.new_correlation_id(),
                 )
                 report = environment.diagnostics_report()
-                self.assertTrue(any(item["event_type"] == "service_door_opened" for item in report["recent_events"]))
+                self.assertTrue(
+                    any(
+                        item["event_type"] == "service_door_opened"
+                        for item in report["recent_events"]
+                    )
+                )
             finally:
                 await environment.stop()
 
@@ -76,7 +81,12 @@ class RuntimeModeIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 report = await environment.service_report(operator_id="svc-tech")
                 self.assertEqual(report["operator_id"], "svc-tech")
                 self.assertEqual(report["machine_state"], "SERVICE_MODE")
-                self.assertTrue(any(item["event_type"] == "simulator_action_applied" for item in report["recent_events"]))
+                self.assertTrue(
+                    any(
+                        item["event_type"] == "simulator_action_applied"
+                        for item in report["recent_events"]
+                    )
+                )
             finally:
                 await environment.stop()
 
@@ -114,7 +124,9 @@ class RuntimeModeIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await environment.start()
             try:
                 entries = environment.ui_facade.catalog_entries()
-                self.assertTrue(any(entry.display_name == "Розы Эквадор 7 шт." for entry in entries))
+                self.assertTrue(
+                    any(entry.display_name == "Розы Эквадор 7 шт." for entry in entries)
+                )
                 self.assertFalse(any(entry.display_name == "Red Roses" for entry in entries))
             finally:
                 await environment.stop()

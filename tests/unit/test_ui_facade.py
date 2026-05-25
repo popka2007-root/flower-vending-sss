@@ -50,11 +50,14 @@ async def test_clear_simulator_recovery_state_resolves_persisted_restricted_stat
 
         tx_repo = _FakeTransactionRepository()
         machine_repo = _FakeMachineStatusRepository()
-        repositories = cast(Any, SimpleNamespace(
-            database=_FakeDatabase(),
-            transactions=tx_repo,
-            machine_status=machine_repo,
-        ))
+        repositories = cast(
+            Any,
+            SimpleNamespace(
+                database=_FakeDatabase(),
+                transactions=tx_repo,
+                machine_status=machine_repo,
+            ),
+        )
         facade = UiApplicationFacade(
             harness.core,
             simulator_controls=cast(Any, object()),  # non-None enables simulator-only reset path
@@ -69,7 +72,10 @@ async def test_clear_simulator_recovery_state_resolves_persisted_restricted_stat
         assert tx.recovery_status.value == "none"
         assert harness.core.transaction_coordinator.active() is None
         assert harness.core.machine_status_service.runtime.status.active_transaction_id is None
-        assert "recovery_pending" not in harness.core.machine_status_service.runtime.status.sale_blockers
+        assert (
+            "recovery_pending"
+            not in harness.core.machine_status_service.runtime.status.sale_blockers
+        )
         assert harness.core.fsm.current_state is MachineState.IDLE
         assert len(tx_repo.saved) == 1
         assert machine_repo.saved[-1][1] == "sim-test-machine"

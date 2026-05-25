@@ -9,7 +9,7 @@ If a future change adds async I/O to any method, add asyncio.Lock.
 from __future__ import annotations
 
 from flower_vending.domain.entities import RecoveryStatus, Transaction, TransactionStatus
-from flower_vending.domain.exceptions import ConcurrencyConflictError, TransactionRecoveryError
+from flower_vending.domain.exceptions import ConcurrencyConflictError, TerminalLockedError, TransactionRecoveryError
 from flower_vending.domain.value_objects import (
     Amount,
     CorrelationId,
@@ -50,8 +50,13 @@ class TransactionCoordinator:
         # clear_active() in VendingController.confirm_pickup() (see A4, E2).
         if self._active_transaction_id is not None:
             existing = self._transactions.get(self._active_transaction_id)
-            if existing is not None and existing.status in _TERMINAL_STATUSES:
-                self._active_transaction_id = None
+            if existing is not None:
+                if existing.status in {TransactionStatus.FAULTED, TransactionStatus.AMBIGUOUS}:
+                    raise TerminalLockedError("terminal is locked due to an unresolved error state")
+                elif existing.status in _TERMINAL_STATUSES:
+                    self._active_transaction_id = None
+                else:
+                    raise ConcurrencyConflictError("a transaction is already active")
             else:
                 raise ConcurrencyConflictError("a transaction is already active")
         transaction = Transaction(

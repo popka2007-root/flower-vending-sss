@@ -25,7 +25,7 @@ from flower_vending.domain.events.vending_events import vending_event
 from flower_vending.app.orchestrators.mixins import TransactionJournalingMixin
 
 
-class PickupTimeoutCoordinator(JournalingMixin):
+class PickupTimeoutCoordinator(TransactionJournalingMixin):
     def __init__(
         self,
         *,
@@ -282,8 +282,6 @@ class PickupTimeoutCoordinator(JournalingMixin):
 
     def _deadline_for_transaction(self, transaction: Transaction) -> datetime:
         return transaction.updated_at + timedelta(seconds=self._pickup_timeout_s)
-
-
 
     def _now(self) -> datetime:
         return datetime.now(tz=timezone.utc)

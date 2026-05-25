@@ -32,7 +32,9 @@ class ConfigValidationTests(unittest.TestCase):
     def test_windows_config_reports_hardware_confirmation_warnings(self) -> None:
         _, _, report = validate_config_file(ROOT / "config" / "examples" / "machine.windows.yaml")
         self.assertTrue(report.valid)
-        self.assertTrue(any(message.code == "hardware_confirmation_required" for message in report.messages))
+        self.assertTrue(
+            any(message.code == "hardware_confirmation_required" for message in report.messages)
+        )
         self.assertTrue(any(message.code == "simulator_disabled" for message in report.messages))
 
 
