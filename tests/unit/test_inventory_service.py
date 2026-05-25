@@ -150,3 +150,34 @@ class TestInventoryService:
     def test_remove_product_unknown(self) -> None:
         service = InventoryService()
         assert service.remove_product("p1") is False
+
+    def test_list_slots(self) -> None:
+        service = InventoryService()
+        s1 = create_slot("s1", "p1")
+        s3 = create_slot("s3", "p2")
+        s2 = create_slot("s2", "p1")
+
+        service.register_slot(s3)
+        service.register_slot(s1)
+        service.register_slot(s2)
+
+        slots = service.list_slots()
+        assert len(slots) == 3
+        # Should be sorted by slot_id
+        assert slots[0] == s1
+        assert slots[1] == s2
+        assert slots[2] == s3
+
+    def test_list_catalog_missing_product(self) -> None:
+        service = InventoryService()
+        p1 = create_product("p1")
+        s1 = create_slot("s1", "p1")
+        # s2 points to p2, which is not registered
+        s2 = create_slot("s2", "p2")
+
+        service.add_product(p1, s1)
+        service.register_slot(s2)
+
+        catalog = service.list_catalog()
+        assert len(catalog) == 1
+        assert catalog[0] == (p1, s1)
