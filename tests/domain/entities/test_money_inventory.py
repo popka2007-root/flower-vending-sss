@@ -16,6 +16,29 @@ def inventory() -> MoneyInventory:
 
 
 @pytest.mark.asyncio
+async def test_add_success(inventory: MoneyInventory) -> None:
+    await inventory.add(10, 5)
+    assert inventory.accounting_counts_by_denomination == {10: 10, 5: 10, 1: 20}
+
+    # Adding new denomination
+    await inventory.add(100, 2)
+    assert inventory.accounting_counts_by_denomination == {100: 2, 10: 10, 5: 10, 1: 20}
+
+
+@pytest.mark.asyncio
+async def test_add_with_zero_count_is_noop(inventory: MoneyInventory) -> None:
+    await inventory.add(10, 0)
+    assert inventory.accounting_counts_by_denomination == {10: 5, 5: 10, 1: 20}
+
+
+@pytest.mark.asyncio
+async def test_add_with_negative_values_raises_error(inventory: MoneyInventory) -> None:
+    with pytest.raises(DomainValidationError, match="cannot add negative count to inventory"):
+        await inventory.add(10, -5)
+    assert inventory.accounting_counts_by_denomination == {10: 5, 5: 10, 1: 20}
+
+
+@pytest.mark.asyncio
 async def test_reserve_with_negative_values_raises_error(inventory: MoneyInventory) -> None:
     plan = {10: -1, 5: 2}
 
