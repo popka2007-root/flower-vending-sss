@@ -89,37 +89,26 @@ class DBV300SDValidator(BillValidator):
                 return
             self._health = replace(self._health, state=DeviceOperationalState.INITIALIZING)
             await self._transport.open()
-            # FIX: Zombie poll task guard — if start() fails AFTER create_task
-            # but BEFORE _started = True, the poll task runs on a half-initialized
-            # transport. We create the task last and track it so the except
-            # handler can cancel it.
-            poll_task: asyncio.Task[None] | None = None
             try:
                 await self._protocol.initialize(self._transport)
                 if self._config.startup_disable_acceptance:
                     await self._protocol.set_acceptance_enabled(self._transport, False)
                 self._acceptance_enabled = False
                 self._stop_requested.clear()
-                poll_task = asyncio.create_task(
-                    self._poll_loop(),
-                    name=f"{self.name}{_POLL_TASK_NAME_SUFFIX}",
-                )
-                self._poll_task = poll_task
-                self._started = True
                 self._health = replace(
                     self._health,
                     state=DeviceOperationalState.READY,
                     last_heartbeat_at=utc_now(),
                 )
+                self._poll_task = asyncio.create_task(
+                    self._poll_loop(),
+                    name=f"{self.name}{_POLL_TASK_NAME_SUFFIX}",
+                )
+                self._started = True
             except Exception as exc:
                 self._health = self._fault_health("startup_failed", str(exc))
-                # FIX: Cancel poll task if created before _started was set
-                if poll_task is not None and not self._started:
-                    poll_task.cancel()
-                    try:
-                        await poll_task
-                    except asyncio.CancelledError:
-                        pass
+                self._poll_task = None
+                self._started = False
                 await self._safe_shutdown_transport()
                 raise
 
