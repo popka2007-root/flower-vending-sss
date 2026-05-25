@@ -52,12 +52,15 @@ class MoneyInventory:
     def reserved_counts_by_denomination(self) -> dict[int, int]:
         return dict(self._reserved_counts)
 
-    def add(self, denomination: int, count: int) -> None:
+    async def add(self, denomination: int, count: int) -> None:
         if count < 0:
-            raise DomainValidationError("cannot add negative counts")
+            raise DomainValidationError("cannot add negative count to inventory")
         if count == 0:
             return
-        self._accounting_counts[denomination] = self._accounting_counts.get(denomination, 0) + count
+        async with self._lock:
+            self._accounting_counts[denomination] = (
+                self._accounting_counts.get(denomination, 0) + count
+            )
 
     async def available_counts(self) -> dict[int, int]:
         async with self._lock:
