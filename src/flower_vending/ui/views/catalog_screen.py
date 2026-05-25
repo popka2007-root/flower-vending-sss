@@ -45,16 +45,19 @@ def _px(n: float) -> int:
 GRADIENT = "qlineargradient(x1:0 y1:0, x2:1 y2:0, stop:0 #E13B9B, stop:1 #9F30ED)"
 GRADIENT_HOVER = "qlineargradient(x1:0 y1:0, x2:1 y2:0, stop:0 #EF4BB0, stop:1 #B24BF5)"
 
-_font_cache: dict[tuple[int, int], QFont] = {}
+_font_cache: dict[tuple[int, int, bool], QFont] = {}
 
 
-def _f(size: int, weight: int = 400) -> QFont:
-    key = (size, weight)
+def _f(size: int, weight: int = 400, serif: bool = False) -> QFont:
+    key = (size, weight, serif)
     cached = _font_cache.get(key)
     if cached is not None:
         return cached
     f = QFont()
-    f.setFamilies(["Segoe UI", "Arial", "sans-serif"])
+    if serif:
+        f.setFamilies(["Georgia", "Times New Roman", "serif"])
+    else:
+        f.setFamilies(["Segoe UI", "Arial", "sans-serif"])
     f.setPixelSize(size)
     weight_map = {
         300: QFont.Weight.Light,
