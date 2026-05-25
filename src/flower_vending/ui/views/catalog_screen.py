@@ -597,15 +597,12 @@ class CatalogScreenWidget(QWidget):
 
     def _relayout_grid(self) -> None:
         cols = 3
-        while (item := self._grid.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
-
-        visible_items = self._catalog_items
-        if self._active_category_id != "all":
-            visible_items = [item for item in self._catalog_items if item.category == self._active_category_id]
-
-        for idx, item in enumerate(visible_items):
+        for i in reversed(range(self._grid.count())):
+            item = self._grid.takeAt(i)
+            if item is not None:
+                if w := item.widget():
+                    w.deleteLater()
+        for idx, item in enumerate(self._catalog_items):
             row = idx // cols
             col = idx % cols
             card = self._make_product_card(item)
@@ -876,9 +873,11 @@ class CatalogScreenWidget(QWidget):
         return row
 
     def _refresh_cart_ui(self) -> None:
-        while (item := self._cart_items_layout.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
+        for i in reversed(range(self._cart_items_layout.count())):
+            item = self._cart_items_layout.takeAt(i)
+            if item is not None:
+                if w := item.widget():
+                    w.deleteLater()
         for it in self._cart.items:
             self._cart_items_layout.addWidget(self._make_cart_item_row(it))
         self._cart_items_layout.addStretch(1)

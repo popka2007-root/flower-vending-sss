@@ -176,9 +176,11 @@ class PaymentScreenWidget(QWidget):
         if is_cash:
             self._update_progress(model)
 
-        while (item := self._sim_layout.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
+        for i in reversed(range(self._sim_layout.count())):
+            item = self._sim_layout.takeAt(i)
+            if item is not None:
+                if w := item.widget():
+                    w.deleteLater()
 
         for action in model.quick_insert_actions:
             btn = QPushButton(action.label)

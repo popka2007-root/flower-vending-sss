@@ -8,16 +8,15 @@ from datetime import datetime, timezone
 
 from flower_vending.app.event_bus import EventBus
 from flower_vending.app.services.machine_status_service import MachineStatusService
-from flower_vending.devices.contracts import DeviceOperationalState
+from flower_vending.devices.contracts import DeviceHealth, DeviceOperationalState
 from flower_vending.devices.interfaces import DoorSensor, ManagedDevice, TemperatureSensor
 from flower_vending.domain.entities import DeviceHealthSnapshot
 from flower_vending.domain.events.machine_events import machine_event
 from flower_vending.domain.value_objects import DeviceState
 
-# Timeout for each device and sensor health check. The main loop wraps device.get_health(),
-# and we also explicitly wrap door_sensor and temperature_sensor reads to prevent
-# the health monitor loop from blocking indefinitely if any hardware hangs
-# (e.g., stuck serial read on a disconnected DBV-300-SD).
+# FIX: Timeout for each device health check. If a device hangs (e.g. stuck
+# serial read on a disconnected DBV-300-SD), the health monitor loop would
+# block indefinitely and never kick the watchdog (see E7).
 _DEVICE_HEALTH_TIMEOUT_S: float = 5.0
 
 
@@ -46,16 +45,19 @@ class HealthMonitor:
     def snapshot(self) -> DeviceHealthSnapshot:
         return self._snapshot
 
+    async def _check_device_health(self, device: ManagedDevice) -> DeviceHealth:
+        return await asyncio.wait_for(
+            device.get_health(),
+            timeout=self._device_health_timeout_s,
+        )
+
     async def poll_once(self, correlation_id: str = "health-monitor") -> DeviceHealthSnapshot:
         faults: list[str] = []
         state_map: dict[str, DeviceState] = {}
         now_iso = datetime.now(tz=timezone.utc).isoformat()
         for name, device in self._devices.items():
             try:
-                health = await asyncio.wait_for(
-                    device.get_health(),
-                    timeout=self._device_health_timeout_s,
-                )
+                health = await self._check_device_health(device)
             except asyncio.TimeoutError:
                 state = DeviceState.FAULT
                 state_map[name] = state
