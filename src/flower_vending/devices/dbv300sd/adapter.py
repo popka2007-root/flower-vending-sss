@@ -95,6 +95,10 @@ class DBV300SDValidator(BillValidator):
                 return
             self._health = replace(self._health, state=DeviceOperationalState.INITIALIZING)
             await self._transport.open()
+            # FIX: Zombie poll task guard — if start() fails AFTER create_task
+            # but BEFORE _started = True, the poll task runs on a half-initialized
+            # transport. We create the task last and track it so the except
+            # handler can cancel it.
             try:
                 await self._protocol.initialize(self._transport)
                 if self._config.startup_disable_acceptance:
@@ -113,16 +117,17 @@ class DBV300SDValidator(BillValidator):
                 self._started = True
             except Exception as exc:
                 self._health = self._fault_health("startup_failed", str(exc))
-                if self._poll_task is not None and not self._started:
-                    self._poll_task.cancel()
-                    try:
-                        await self._poll_task
-                    except asyncio.CancelledError:
-                        pass
-                self._poll_task = None
-                self._started = False
-                await self._safe_shutdown_transport()
                 raise
+            finally:
+                if not self._started:
+                    if self._poll_task is not None:
+                        self._poll_task.cancel()
+                        try:
+                            await self._poll_task
+                        except asyncio.CancelledError:
+                            pass
+                        self._poll_task = None
+                    await self._safe_shutdown_transport()
 
     async def stop(self) -> None:
         async with self._lock:
