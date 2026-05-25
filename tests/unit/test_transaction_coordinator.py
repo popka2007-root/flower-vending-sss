@@ -5,7 +5,14 @@ from flower_vending.domain.entities import TransactionStatus
 from flower_vending.domain.exceptions import ConcurrencyConflictError
 
 
-def test_create_transaction_fails_if_active_not_terminal() -> None:
+@pytest.mark.parametrize(
+    "non_terminal_status",
+    [
+        TransactionStatus.CREATED,
+        TransactionStatus.PICKUP_TIMED_OUT,
+    ],
+)
+def test_create_transaction_fails_if_active_not_terminal(non_terminal_status: TransactionStatus) -> None:
     coordinator = TransactionCoordinator()
 
     # Create an initial transaction
@@ -16,8 +23,8 @@ def test_create_transaction_fails_if_active_not_terminal() -> None:
         price_minor_units=1000,
     )
 
-    # Its default status is CREATED (which is non-terminal)
-    assert txn1.status == TransactionStatus.CREATED
+    # Move it to a non-terminal state
+    txn1.status = non_terminal_status
 
     # Attempt to create a second transaction should fail
     with pytest.raises(ConcurrencyConflictError, match="a transaction is already active"):
@@ -34,7 +41,6 @@ def test_create_transaction_fails_if_active_not_terminal() -> None:
     [
         TransactionStatus.COMPLETED,
         TransactionStatus.CANCELLED,
-        TransactionStatus.PICKUP_TIMED_OUT,
     ],
 )
 def test_create_transaction_succeeds_if_active_is_terminal(terminal_status: TransactionStatus) -> None:
