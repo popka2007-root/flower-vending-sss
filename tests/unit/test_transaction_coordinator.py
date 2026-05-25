@@ -34,6 +34,7 @@ def test_create_transaction_fails_if_active_not_terminal():
     [
         TransactionStatus.COMPLETED,
         TransactionStatus.CANCELLED,
+        TransactionStatus.PICKUP_TIMED_OUT,
     ],
 )
 def test_create_transaction_succeeds_if_active_is_terminal(terminal_status):
@@ -75,7 +76,6 @@ def test_create_transaction_succeeds_if_active_is_terminal(terminal_status):
 )
 def test_create_transaction_raises_if_active_is_locked(locked_status):
     from flower_vending.domain.exceptions import TerminalLockedError
-
     coordinator = TransactionCoordinator()
 
     txn1 = coordinator.create_transaction(

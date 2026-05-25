@@ -90,10 +90,7 @@ class TransactionCoordinator:
             transaction.transaction_id.value: transaction for transaction in transactions
         }
         if active_transaction_id is not None:
-            if active_transaction_id not in self._transactions:
-                raise TransactionRecoveryError(
-                    f"active_transaction_id {active_transaction_id} not found in restored set"
-                )
+            self._validate_restored_active_transaction(active_transaction_id)
             self._active_transaction_id = active_transaction_id
             return
         for transaction in transactions:
@@ -101,6 +98,12 @@ class TransactionCoordinator:
                 self._active_transaction_id = transaction.transaction_id.value
                 return
         self._active_transaction_id = None
+
+    def _validate_restored_active_transaction(self, active_transaction_id: str) -> None:
+        if active_transaction_id not in self._transactions:
+            raise TransactionRecoveryError(
+                f"active_transaction_id {active_transaction_id} not found in restored set"
+            )
 
     def clear_active(self, transaction_id: str) -> None:
         if self._active_transaction_id == transaction_id:
