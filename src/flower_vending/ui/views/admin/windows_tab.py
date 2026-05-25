@@ -58,9 +58,11 @@ class WindowsTab(QWidget):
         if not isinstance(model, AdminWindowsTabViewModel):
             return
 
-        while (item := self._windows_grid.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
+        for i in reversed(range(self._windows_grid.count())):
+            item = self._windows_grid.takeAt(i)
+            if item is not None:
+                if w := item.widget():
+                    w.deleteLater()
 
         for window in model.windows:
             card = WindowStatusCard(window.window_id, window.status)
@@ -68,9 +70,11 @@ class WindowsTab(QWidget):
             card.action_requested.connect(self.action_requested.emit)
             self._windows_grid.addWidget(card)
 
-        while (item := self._log_content.takeAt(0)) is not None:
-            if w := item.widget():
-                w.deleteLater()
+        for i in reversed(range(self._log_content.count())):
+            item = self._log_content.takeAt(i)
+            if item is not None:
+                if w := item.widget():
+                    w.deleteLater()
 
         for entry in model.activity_log[-10:]:
             lbl = QLabel(entry)
