@@ -162,10 +162,9 @@ class ProductDetailsScreenWidget(QWidget):
                 self._photo.setText("")
 
         pm_layout = self._payment_methods_wrap.layout()
-        for i in reversed(range(pm_layout.count())):
-            item = pm_layout.takeAt(i)
-            if item is not None and item.widget() is not None:
-                item.widget().deleteLater()
+        while (item := pm_layout.takeAt(0)) is not None:
+            if w := item.widget():
+                w.deleteLater()
 
         pm_layout.addStretch(1)
         for method in model.payment_methods:
@@ -180,7 +179,7 @@ class ProductDetailsScreenWidget(QWidget):
         chip.setFixedHeight(64)
         chip.setMinimumWidth(140)
         chip.setMaximumWidth(250)
-        chip.setStyleSheet(f"background: #FFFFFF; border: none; " f"border-radius: {Radius.XL}px;")
+        chip.setStyleSheet(f"background: #FFFFFF; border: none; border-radius: {Radius.XL}px;")
         chip_layout = QVBoxLayout(chip)
         chip_layout.setContentsMargins(16, 10, 16, 10)
         icon_map = {
