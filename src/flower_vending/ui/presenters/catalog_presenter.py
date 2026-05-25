@@ -87,6 +87,7 @@ class CatalogPresenter:
             currency_code=entry.currency_code,
             availability_text=self._availability_text(entry),
             enabled=entry.available,
+            available_quantity=entry.quantity,
             short_description=self._metadata_text(entry.metadata, "short_description")
             or (self._metadata_text(entry.metadata, "description")),
             image_path=self._image_path(entry.metadata),

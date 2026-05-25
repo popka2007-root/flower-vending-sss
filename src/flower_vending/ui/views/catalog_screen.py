@@ -74,6 +74,7 @@ class CartItem:
     currency: str
     image_path: str | None = None
     quantity: int = 1
+    available_quantity: int = 1
 
 
 class _CartManager:
@@ -96,15 +97,18 @@ class _CartManager:
         price_minor: int,
         currency: str = "RUB",
         image_path: str | None = None,
+        available_quantity: int = 1,
     ) -> None:
         for it in self.items:
             if it.product_id == product_id and it.slot_id == slot_id:
-                it.quantity += 1
+                if it.quantity < it.available_quantity:
+                    it.quantity += 1
                 self._notify()
                 return
-        self.items.append(
-            CartItem(product_id, slot_id, title, price_minor, currency, image_path, 1)
-        )
+        if available_quantity > 0:
+            self.items.append(
+                CartItem(product_id, slot_id, title, price_minor, currency, image_path, 1, available_quantity)
+            )
         self._notify()
 
     def remove(self, product_id: str, slot_id: str) -> None:
@@ -120,7 +124,10 @@ class _CartManager:
     def update_qty(self, product_id: str, slot_id: str, delta: int) -> None:
         for it in self.items:
             if it.product_id == product_id and it.slot_id == slot_id:
-                it.quantity = max(0, it.quantity + delta)
+                new_qty = it.quantity + delta
+                if new_qty > it.available_quantity:
+                    new_qty = it.available_quantity
+                it.quantity = max(0, new_qty)
                 if it.quantity == 0:
                     self.items.remove(it)
                 self._notify()
@@ -203,6 +210,8 @@ class CatalogScreenWidget(QWidget):
         self.setObjectName("CustomerScreen")
         self._tap_count = 0
         self._catalog_items: list[CatalogItemViewModel] = []
+        self._categories: list[CatalogCategoryViewModel] = []
+        self._active_category_id: str = "all"
         self._cart_open = False
         self._cart_anim = None
 
@@ -318,6 +327,15 @@ class CatalogScreenWidget(QWidget):
         outer = QVBoxLayout(self._grid_container)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
+
+        # Categories / Filter bar
+        self._categories_wrap = QWidget()
+        self._categories_wrap.setStyleSheet("background: transparent;")
+        self._categories_layout = QHBoxLayout(self._categories_wrap)
+        self._categories_layout.setContentsMargins(40, 16, 40, 0)
+        self._categories_layout.setSpacing(12)
+        self._categories_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        outer.addWidget(self._categories_wrap)
 
         self._grid_wrap = QWidget()
         self._grid_wrap.setStyleSheet("background: transparent;")
@@ -510,12 +528,74 @@ class CatalogScreenWidget(QWidget):
             return
         self._hero_title.setText(model.title)
         self._hero_subtitle.setText(model.subtitle)
-        self._catalog_items = list(model.items)
+        self.set_catalog_items(list(model.items), list(model.categories))
+
+    def set_catalog_items(self, items: list[CatalogItemViewModel], categories: list[CatalogCategoryViewModel] | None = None) -> None:
+        self._catalog_items = items
+        if not categories:
+            seen = {}
+            for item in items:
+                seen.setdefault(item.category, item.category_label)
+            from flower_vending.ui.viewmodels.screens import CatalogCategoryViewModel
+            self._categories = [CatalogCategoryViewModel("all", "Все")] + [
+                CatalogCategoryViewModel(cat_id, label) for cat_id, label in seen.items()
+            ]
+        else:
+            self._categories = categories
+
+        # Ensure active category is valid, fallback to all
+        if self._active_category_id not in [c.category_id for c in self._categories]:
+            self._active_category_id = "all"
+
+        self._render_categories()
+        self._relayout_grid()
+
+    def _render_categories(self) -> None:
+        while (item := self._categories_layout.takeAt(0)) is not None:
+            if w := item.widget():
+                w.deleteLater()
+
+        for category in self._categories:
+            btn = QPushButton(category.label)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setFont(_f(15, 600))
+            btn.setFixedHeight(40)
+
+            if category.category_id == self._active_category_id:
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background: {GRADIENT};
+                        border: none;
+                        border-radius: 20px;
+                        color: white;
+                        padding: 0 24px;
+                    }}
+                """)
+            else:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background: #F3F4F6;
+                        border: none;
+                        border-radius: 20px;
+                        color: #4B5563;
+                        padding: 0 24px;
+                    }
+                    QPushButton:hover { background: #E5E7EB; color: #111827; }
+                """)
+
+            btn.clicked.connect(lambda _checked=False, cat_id=category.category_id: self._set_category(cat_id))
+            self._categories_layout.addWidget(btn)
+
+        self._categories_layout.addStretch(1)
+
+    def _set_category(self, category_id: str) -> None:
+        if self._active_category_id == category_id:
+            return
+        self._active_category_id = category_id
+        self._render_categories()
         self._relayout_grid()
 
     def _relayout_grid(self) -> None:
-        if not self._catalog_items:
-            return
         cols = 3
         for i in reversed(range(self._grid.count())):
             item = self._grid.takeAt(i)
@@ -527,6 +607,7 @@ class CatalogScreenWidget(QWidget):
             col = idx % cols
             card = self._make_product_card(item)
             self._grid.addWidget(card, row, col, Qt.AlignmentFlag.AlignCenter)
+
         QTimer.singleShot(0, self._reposition_all_badges)
         QTimer.singleShot(0, self._reposition_cart_badge)
 
@@ -621,6 +702,12 @@ class CatalogScreenWidget(QWidget):
             }
             """
         )
+
+        shadow = QGraphicsDropShadowEffect(card.inner)
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 30))
+        shadow.setOffset(0, 4)
+        card.inner.setGraphicsEffect(shadow)
 
         image_wrap = QFrame(card.inner)
         image_wrap.setFixedHeight(230)
@@ -766,9 +853,15 @@ class CatalogScreenWidget(QWidget):
         plus_btn.setFixedSize(26, 26)
         plus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         plus_btn.setIcon(icon(IconName.PLUS, 14, "#9333EA"))
-        plus_btn.setStyleSheet(
-            "QPushButton { background: transparent; border: none; } QPushButton:hover { background: #F3F4F6; border-radius: 13px; }"
-        )
+        if item.quantity >= item.available_quantity:
+            plus_btn.setEnabled(False)
+            plus_btn.setStyleSheet(
+                "QPushButton { background: transparent; border: none; } QPushButton:disabled { opacity: 0.5; }"
+            )
+        else:
+            plus_btn.setStyleSheet(
+                "QPushButton { background: transparent; border: none; } QPushButton:hover { background: #F3F4F6; border-radius: 13px; }"
+            )
         plus_btn.clicked.connect(
             lambda _checked=False, p=pid, s=sid: self._cart.update_qty(p, s, 1)
         )
@@ -809,6 +902,7 @@ class CatalogScreenWidget(QWidget):
             item.price_minor_units,
             item.currency_code or "RUB",
             item.image_path,
+            item.available_quantity,
         )
         self.selection_changed.emit(item.product_id, item.slot_id)
         self._show_cart()
