@@ -120,6 +120,7 @@ class PinScreenWidget(QWidget):
         grid.addWidget(zero_btn, 3, 1, Qt.AlignmentFlag.AlignCenter)
 
         del_btn = QPushButton()
+        del_btn.setAccessibleName("Стереть")
         del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         del_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         del_btn.setFixedSize(80, 80)

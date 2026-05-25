@@ -164,6 +164,7 @@ class CheckoutFlow(QWidget):
         hl.setSpacing(_px(self, 2))
 
         back = QPushButton()
+        back.setAccessibleName("Назад")
         back.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         back.setCursor(Qt.CursorShape.PointingHandCursor)
         back.setFixedSize(36, 36)
