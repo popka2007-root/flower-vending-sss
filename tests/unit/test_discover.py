@@ -3,13 +3,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from flower_vending.runtime.discover import format_discovery
-
-
 from flower_vending.runtime.discover import (
     discover_arduino,
     find_esp32_port,
     find_jcm_port,
+    format_discovery,
     list_com_ports,
 )
 
@@ -20,6 +18,23 @@ class MockPort:
         self.description = description
         self.hwid = hwid
         self.manufacturer = manufacturer
+
+
+def test_format_discovery_partial_data() -> None:
+    """Test format_discovery when some data is missing from results."""
+    results: dict[str, Any] = {
+        "port": "COM3",
+    }
+
+    expected_lines = [
+        "--- COM Port Discovery ---",
+        "ESP32 found on: COM3",
+        "Description: unknown",
+        "Status response: unknown",
+    ]
+    expected_output = "\n".join(expected_lines)
+
+    assert format_discovery(results) == expected_output
 
 
 def test_format_discovery_found() -> None:
