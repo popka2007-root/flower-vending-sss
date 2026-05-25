@@ -19,9 +19,9 @@ from flower_vending.domain.value_objects import (
     TransactionId,
 )
 
-# FIX: Terminal states that allow a new transaction to replace the active one.
-# Prevents ConcurrencyConflictError when confirm_pickup() completes a transaction
-# but clear_active() hasn't run yet (see E2).
+# Terminal states that allow a new transaction to safely replace the active one.
+# This prevents concurrency conflicts when a transaction is logically complete
+# but its active state has not yet been cleared by the controller.
 _TERMINAL_STATUSES = {
     TransactionStatus.COMPLETED,
     TransactionStatus.CANCELLED,
@@ -45,9 +45,9 @@ class TransactionCoordinator:
         price_minor_units: int,
         currency: str = "RUB",
     ) -> Transaction:
-        # FIX: Check if existing active transaction is terminal before rejecting.
-        # This closes the race window between mark_window_closed() and
-        # clear_active() in VendingController.confirm_pickup() (see A4, E2).
+        # Check if the existing active transaction is in a terminal state before rejecting.
+        # If it is terminal, it can be safely replaced, mitigating potential race
+        # conditions during concurrent state updates in the controller.
         if self._active_transaction_id is not None:
             existing = self._transactions.get(self._active_transaction_id)
             if existing is not None:
@@ -90,8 +90,8 @@ class TransactionCoordinator:
         *,
         active_transaction_id: str | None = None,
     ) -> None:
-        # FIX: Validate active_transaction_id exists in restored set to
-        # prevent silent None returns from active() (see E1).
+        # Validate that the active_transaction_id exists in the restored set
+        # to ensure consistency and prevent silent None returns from active().
         self._transactions = {
             transaction.transaction_id.value: transaction for transaction in transactions
         }
