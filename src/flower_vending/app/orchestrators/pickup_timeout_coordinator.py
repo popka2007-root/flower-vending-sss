@@ -17,6 +17,7 @@ from flower_vending.app.orchestrators.transaction_coordinator import (
 )
 from flower_vending.app.services.machine_status_service import MachineStatusService
 from flower_vending.devices.interfaces import WindowController
+from flower_vending.app.orchestrators.journaling_mixin import JournalingMixin
 from flower_vending.domain.entities import Transaction, TransactionStatus
 from flower_vending.domain.events import DomainEvent
 from flower_vending.domain.events.machine_events import machine_event
@@ -66,7 +67,9 @@ class PickupTimeoutCoordinator(TransactionJournalingMixin):
         async with self._lock:
             self._deadlines.pop(event.transaction_id, None)
 
-    async def poll_once(self, *, correlation_id: str = "pickup-timeout-supervisor") -> None:
+    async def poll_once(
+        self, *, correlation_id: str = "pickup-timeout-supervisor"
+    ) -> None:
         expired = await self._collect_expired(correlation_id=correlation_id)
         for transaction_id, timeout_correlation_id in expired:
             await self._handle_timeout(
@@ -81,7 +84,9 @@ class PickupTimeoutCoordinator(TransactionJournalingMixin):
             if transaction is None:
                 raise RuntimeError("no transaction is waiting for customer pickup")
             transaction_id = transaction.transaction_id.value
-        await self._handle_timeout(transaction_id, correlation_id=correlation_id, forced=True)
+        await self._handle_timeout(
+            transaction_id, correlation_id=correlation_id, forced=True
+        )
         return transaction_id
 
     def deadline_for(self, transaction_id: str) -> datetime | None:
@@ -127,7 +132,8 @@ class PickupTimeoutCoordinator(TransactionJournalingMixin):
             transaction = self._transaction_coordinator.get(transaction_id)
             if (
                 transaction is None
-                or transaction.status is not TransactionStatus.WAITING_FOR_CUSTOMER_PICKUP
+                or transaction.status
+                is not TransactionStatus.WAITING_FOR_CUSTOMER_PICKUP
             ):
                 return
             await self._event_bus.publish(
@@ -141,7 +147,9 @@ class PickupTimeoutCoordinator(TransactionJournalingMixin):
                 )
             )
             if self._fsm.current_state == MachineState.WAITING_FOR_CUSTOMER_PICKUP:
-                self._fsm.transition(MachineState.CLOSING_DELIVERY_WINDOW, "pickup_timeout_elapsed")
+                self._fsm.transition(
+                    MachineState.CLOSING_DELIVERY_WINDOW, "pickup_timeout_elapsed"
+                )
                 self._machine_status_service.set_machine_state(self._fsm.current_state)
             self._record_intent(
                 transaction,
@@ -150,7 +158,9 @@ class PickupTimeoutCoordinator(TransactionJournalingMixin):
                 forced=forced,
             )
             try:
-                await self._window_controller.close_window(correlation_id=correlation_id)
+                await self._window_controller.close_window(
+                    correlation_id=correlation_id
+                )
             except Exception as exc:
                 transaction.mark_faulted()
                 self._record_outcome(
@@ -162,9 +172,13 @@ class PickupTimeoutCoordinator(TransactionJournalingMixin):
                     error=exc.__class__.__name__,
                 )
                 if self._fsm.can_transition(MachineState.FAULT):
-                    self._fsm.transition(MachineState.FAULT, "pickup_timeout_window_close_failed")
+                    self._fsm.transition(
+                        MachineState.FAULT, "pickup_timeout_window_close_failed"
+                    )
                 else:
-                    self._fsm.force_state(MachineState.FAULT, "pickup_timeout_window_close_failed")
+                    self._fsm.force_state(
+                        MachineState.FAULT, "pickup_timeout_window_close_failed"
+                    )
                 self._machine_status_service.set_machine_state(self._fsm.current_state)
                 self._machine_status_service.block_sales("delivery_window_fault")
                 await self._event_bus.publish(
@@ -256,7 +270,10 @@ class PickupTimeoutCoordinator(TransactionJournalingMixin):
 
     def _first_waiting_transaction(self) -> Transaction | None:
         active = self._transaction_coordinator.active()
-        if active is not None and active.status is TransactionStatus.WAITING_FOR_CUSTOMER_PICKUP:
+        if (
+            active is not None
+            and active.status is TransactionStatus.WAITING_FOR_CUSTOMER_PICKUP
+        ):
             return active
         for transaction in self._transaction_coordinator.unresolved_transactions():
             if transaction.status is TransactionStatus.WAITING_FOR_CUSTOMER_PICKUP:

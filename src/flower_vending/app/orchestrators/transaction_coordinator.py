@@ -25,9 +25,9 @@ from flower_vending.domain.value_objects import (
 _TERMINAL_STATUSES = {
     TransactionStatus.COMPLETED,
     TransactionStatus.CANCELLED,
-    TransactionStatus.PICKUP_TIMED_OUT,
     TransactionStatus.FAULTED,
     TransactionStatus.AMBIGUOUS,
+    TransactionStatus.PICKUP_TIMED_OUT,
 }
 
 
