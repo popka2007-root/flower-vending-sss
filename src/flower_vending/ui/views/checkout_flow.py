@@ -383,10 +383,9 @@ class CheckoutFlow(QWidget):
         self._pay_btn.setText(f"Оплатить {_fmt(amount)}")
 
     def set_order_items(self, items: list[str]) -> None:
-        for i in reversed(range(self._order_card_layout.count())):
-            item = self._order_card_layout.takeAt(i)
-            if item is not None and item.widget() is not None:
-                item.widget().deleteLater()
+        while (item := self._order_card_layout.takeAt(0)) is not None:
+            if w := item.widget():
+                w.deleteLater()
         for name in items:
             lbl = QLabel(name)
             lbl.setFont(_f(14, 400))

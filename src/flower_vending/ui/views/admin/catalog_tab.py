@@ -162,10 +162,9 @@ class CatalogTab(QWidget):
         if not isinstance(model, AdminCatalogTabViewModel):
             return
 
-        for i in reversed(range(self._grid.count())):
-            item = self._grid.takeAt(i)
-            if item is not None and item.widget() is not None:
-                item.widget().deleteLater()
+        while (item := self._grid.takeAt(0)) is not None:
+            if w := item.widget():
+                w.deleteLater()
 
         for idx, product in enumerate(model.products):
             card = self._make_product_card(product)
@@ -174,7 +173,7 @@ class CatalogTab(QWidget):
 
     def _make_product_card(self, product: AdminCatalogItemViewModel) -> QWidget:
         card = QWidget()
-        card.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL2}px; " f"border: none;")
+        card.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL2}px; border: none;")
         card.setMinimumHeight(340)
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(0, 0, 0, 0)
@@ -272,8 +271,9 @@ class CatalogTab(QWidget):
                 btn.clicked.connect(lambda checked=False, p=product: self._confirm_delete(p))
             else:
                 btn.clicked.connect(
-                    lambda checked=False,
-                    aid=f"admin_{act_id}:{product.product_id}": self.action_requested.emit(aid)
+                    lambda checked=False, aid=f"admin_{act_id}:{product.product_id}": (
+                        self.action_requested.emit(aid)
+                    )
                 )
             actions.addWidget(btn)
         info.addLayout(actions)

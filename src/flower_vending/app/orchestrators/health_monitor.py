@@ -99,26 +99,38 @@ class HealthMonitor:
             )
 
         if self._door_sensor is not None:
-            door = await self._door_sensor.read_service_door()
-            if door.is_open:
-                self._machine_status_service.block_sales("service_door_open")
-                await self._event_bus.publish(
-                    machine_event("service_door_opened", correlation_id=correlation_id)
+            try:
+                door = await asyncio.wait_for(
+                    self._door_sensor.read_service_door(),
+                    timeout=self._device_health_timeout_s,
                 )
-            else:
-                self._machine_status_service.unblock_sales("service_door_open")
+                if door.is_open:
+                    self._machine_status_service.block_sales("service_door_open")
+                    await self._event_bus.publish(
+                        machine_event("service_door_opened", correlation_id=correlation_id)
+                    )
+                else:
+                    self._machine_status_service.unblock_sales("service_door_open")
+            except asyncio.TimeoutError:
+                pass
 
         if self._temperature_sensor is not None:
-            reading = await self._temperature_sensor.read_temperature()
-            if reading.celsius >= self._critical_temperature_celsius:
-                self._machine_status_service.block_sales("critical_temperature")
-                await self._event_bus.publish(
-                    machine_event(
-                        "critical_temperature_detected",
-                        correlation_id=correlation_id,
-                        celsius=reading.celsius,
-                    )
+            try:
+                reading = await asyncio.wait_for(
+                    self._temperature_sensor.read_temperature(),
+                    timeout=self._device_health_timeout_s,
                 )
-            else:
-                self._machine_status_service.unblock_sales("critical_temperature")
+                if reading.celsius >= self._critical_temperature_celsius:
+                    self._machine_status_service.block_sales("critical_temperature")
+                    await self._event_bus.publish(
+                        machine_event(
+                            "critical_temperature_detected",
+                            correlation_id=correlation_id,
+                            celsius=reading.celsius,
+                        )
+                    )
+                else:
+                    self._machine_status_service.unblock_sales("critical_temperature")
+            except asyncio.TimeoutError:
+                pass
         return self._snapshot
