@@ -70,8 +70,6 @@ make install-all
 ```bash
 python -m flower_vending simulator-ui --config config/examples/machine.simulator.yaml
 ```
-"# flower-vending-sss"
-"# flower-vending-sss"
 
 ### Дополнительные команды
 *   **Диагностика:** `python -m flower_vending diagnostics`
