@@ -81,8 +81,8 @@ class ServiceScreenWidget(QWidget):
 
     @staticmethod
     def _clear_layout(layout: QLayout) -> None:
-        while layout.count():
-            item = layout.takeAt(0)
+        for i in reversed(range(layout.count())):
+            item = layout.takeAt(i)
             if item is None:
                 continue
             w = item.widget()

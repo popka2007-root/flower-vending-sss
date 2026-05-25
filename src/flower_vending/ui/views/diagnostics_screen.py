@@ -139,16 +139,16 @@ class DiagnosticsScreenWidget(QWidget):
         blockers_text = ", ".join(model.sale_blockers) if model.sale_blockers else "Нет"
         self._blockers_value.setText(blockers_text)
 
-        while self._device_list.count():
-            item = self._device_list.takeAt(0)
+        for i in reversed(range(self._device_list.count())):
+            item = self._device_list.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
 
         for device in model.devices:
             self._device_list.addWidget(self._make_device_row(device))
 
-        while self._events_list.count():
-            item = self._events_list.takeAt(0)
+        for i in reversed(range(self._events_list.count())):
+            item = self._events_list.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
 
@@ -157,8 +157,8 @@ class DiagnosticsScreenWidget(QWidget):
             lbl.setStyleSheet(f"font-size: 12px; color: {BrandColors.GRAY_500};")
             self._events_list.addWidget(lbl)
 
-        while self._tx_list.count():
-            item = self._tx_list.takeAt(0)
+        for i in reversed(range(self._tx_list.count())):
+            item = self._tx_list.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
             elif item is not None and item.layout() is not None:

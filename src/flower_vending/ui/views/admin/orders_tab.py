@@ -66,7 +66,7 @@ class OrdersTab(QWidget):
                 f"border: 1px solid rgba(0,0,0,0.08); font-size: 13px; "
                 f"font-weight: {Typography.WEIGHTS['medium']}; background: #FFFFFF; "
                 f"color: {BrandColors.GRAY_500}; }}"
-                f"QPushButton[active=\"true\"] {{ background: {BrandColors.PURPLE_600}; "
+                f'QPushButton[active="true"] {{ background: {BrandColors.PURPLE_600}; '
                 f"color: #FFFFFF; border-color: {BrandColors.PURPLE_600}; }}"
             )
             btn.clicked.connect(

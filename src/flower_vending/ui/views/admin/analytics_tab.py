@@ -221,7 +221,7 @@ class _ProductBar(QWidget):
         fill.setFixedWidth(int(160 * pct / 100))
         fill.setFixedHeight(8)
         fill.setStyleSheet(
-            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #EC4899, stop:1 #9333EA); border-radius: 4px;"
+            f"background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #EC4899, stop:1 #9333EA); border-radius: 4px;"
         )
         bar_layout.addWidget(fill)
         bar_layout.addStretch(1)
@@ -319,8 +319,8 @@ class AnalyticsTab(QWidget):
         self._render_top_products(model.top_products)
 
     def _render_top_products(self, top_products: tuple[tuple[str, str, float], ...]) -> None:
-        while self._top_list.count():
-            item = self._top_list.takeAt(0)
+        for i in reversed(range(self._top_list.count())):
+            item = self._top_list.takeAt(i)
             if item and item.widget():
                 item.widget().deleteLater()
 

@@ -162,8 +162,8 @@ class CatalogTab(QWidget):
         if not isinstance(model, AdminCatalogTabViewModel):
             return
 
-        while self._grid.count():
-            item = self._grid.takeAt(0)
+        for i in reversed(range(self._grid.count())):
+            item = self._grid.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
 

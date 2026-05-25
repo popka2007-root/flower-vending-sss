@@ -58,8 +58,8 @@ class WindowsTab(QWidget):
         if not isinstance(model, AdminWindowsTabViewModel):
             return
 
-        while self._windows_grid.count():
-            item = self._windows_grid.takeAt(0)
+        for i in reversed(range(self._windows_grid.count())):
+            item = self._windows_grid.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
 
@@ -69,8 +69,8 @@ class WindowsTab(QWidget):
             card.action_requested.connect(self.action_requested.emit)
             self._windows_grid.addWidget(card)
 
-        while self._log_content.count():
-            item = self._log_content.takeAt(0)
+        for i in reversed(range(self._log_content.count())):
+            item = self._log_content.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
 

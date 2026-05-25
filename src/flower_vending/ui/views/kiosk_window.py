@@ -252,7 +252,7 @@ class KioskMainWindow(QMainWindow):
     def _run(self, coro: Coroutine[Any, Any, object]) -> None:
         t = asyncio.get_event_loop().create_task(coro)
         t.add_done_callback(
-            lambda d: logger.error("bg_task_failed", exc_info=d.exception())
-            if d.exception()
-            else None
+            lambda d: (
+                logger.error("bg_task_failed", exc_info=d.exception()) if d.exception() else None
+            )
         )

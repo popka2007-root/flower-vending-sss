@@ -94,7 +94,7 @@ class AdminShell(QWidget):
                 f"background: transparent; }}"
                 f"QPushButton:hover {{ background: rgba(255,255,255,0.08); "
                 f"color: #FFFFFF; }}"
-                f"QPushButton[active=\"true\"] {{ background: rgba(255,255,255,0.10); "
+                f'QPushButton[active="true"] {{ background: rgba(255,255,255,0.10); '
                 f"color: #FFFFFF; "
                 f"border-left: 3px solid #A78BFA; }}"
             )

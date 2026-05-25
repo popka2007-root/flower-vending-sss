@@ -5,7 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPixmap, QPainter, QPainterPath, QBrush
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QFontMetrics,
+    QPixmap,
+    QPainter,
+    QPainterPath,
+    QBrush,
+    QRegion,
+)
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -510,11 +519,9 @@ class CatalogScreenWidget(QWidget):
             return
         cols = 3
         for i in reversed(range(self._grid.count())):
-            item = self._grid.itemAt(i)
+            item = self._grid.takeAt(i)
             if item is not None and item.widget() is not None:
-                w = item.widget()
-                self._grid.removeWidget(w)
-                w.deleteLater()
+                item.widget().deleteLater()
         for idx, item in enumerate(self._catalog_items):
             row = idx // cols
             col = idx % cols
@@ -773,8 +780,8 @@ class CatalogScreenWidget(QWidget):
         return row
 
     def _refresh_cart_ui(self) -> None:
-        while self._cart_items_layout.count():
-            item = self._cart_items_layout.takeAt(0)
+        for i in reversed(range(self._cart_items_layout.count())):
+            item = self._cart_items_layout.takeAt(i)
             if item is not None and item.widget() is not None:
                 item.widget().deleteLater()
         for it in self._cart.items:
