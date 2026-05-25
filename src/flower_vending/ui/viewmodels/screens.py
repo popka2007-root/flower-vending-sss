@@ -25,6 +25,7 @@ class CatalogItemViewModel:
     currency_code: str = "RUB"
     availability_text: str = ""
     enabled: bool = True
+    available_quantity: int = 1
     short_description: str | None = None
     image_path: str | None = None
     freshness_note: str | None = None
