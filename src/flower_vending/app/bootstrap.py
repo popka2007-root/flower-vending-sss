@@ -45,7 +45,11 @@ from flower_vending.domain.commands.purchase_commands import (
     StartPurchase,
 )
 from flower_vending.domain.commands.recovery_commands import RecoverInterruptedTransaction
-from flower_vending.domain.commands.service_commands import EnterServiceMode, LockPurchaseButton, ToggleProductCommand
+from flower_vending.domain.commands.service_commands import (
+    EnterServiceMode,
+    LockPurchaseButton,
+    ToggleProductCommand,
+)
 from flower_vending.domain.entities import MoneyInventory
 from flower_vending.payments.change_manager import ChangeManager
 
@@ -199,47 +203,63 @@ class ApplicationCore:
             await self.display_rotation_controller.poll_once()
 
 
-def build_application_core(
-    *,
-    validator: BillValidator,
-    change_dispenser: ChangeDispenser,
-    motor_controller: MotorController,
-    window_controller: WindowController,
-    inventory_service: InventoryService,
+def _setup_services(
     money_inventory: MoneyInventory,
-    devices: Mapping[str, ManagedDevice],
-    accepted_bill_denominations: tuple[int, ...] = (),
-    door_sensor: DoorSensor | None = None,
-    temperature_sensor: TemperatureSensor | None = None,
-    inventory_sensor: InventorySensor | None = None,
-    initial_state: MachineState = MachineState.IDLE,
-    critical_temperature_celsius: float = 8.0,
-    health_poll_interval_s: float = 0.5,
-    validator_event_timeout_s: float = 0.05,
-    watchdog_timeout_s: float = 30.0,
-    pickup_timeout_s: float = 60.0,
-    journal: ApplicationJournal | None = None,
-    service_pin: str = "0000",
-    idle_timeout_s: float = 120.0,
-) -> ApplicationCore:
-    event_bus = EventBus()
-    command_bus = CommandBus()
-    fsm = StateMachineEngine(initial_state=initial_state)
+    change_dispenser: ChangeDispenser,
+    accepted_bill_denominations: tuple[int, ...],
+    initial_state: MachineState,
+) -> tuple[ChangeManager, MachineStatusService]:
     change_manager = ChangeManager(
         inventory=money_inventory,
         change_dispenser=change_dispenser,
         accepted_bill_denominations=accepted_bill_denominations,
     )
-    machine_status_service = MachineStatusService(MachineRuntimeAggregate(), change_manager=change_manager)
+    machine_status_service = MachineStatusService(
+        MachineRuntimeAggregate(), change_manager=change_manager
+    )
     machine_status_service.set_machine_state(initial_state)
+    return change_manager, machine_status_service
+
+
+def _setup_journal(journal: ApplicationJournal | None) -> ApplicationJournal:
     if journal is None:
         warnings.warn(
             "No ApplicationJournal provided — using NoopApplicationJournal. "
             "Intent/outcome records will not be persisted.",
             stacklevel=2,
         )
-    application_journal = journal or NoopApplicationJournal()
+    return journal or NoopApplicationJournal()
 
+
+def _create_orchestrators(
+    validator: BillValidator,
+    change_manager: ChangeManager,
+    event_bus: EventBus,
+    fsm: StateMachineEngine,
+    machine_status_service: MachineStatusService,
+    application_journal: ApplicationJournal,
+    inventory_service: InventoryService,
+    motor_controller: MotorController,
+    window_controller: WindowController,
+    inventory_sensor: InventorySensor | None,
+    pickup_timeout_s: float,
+    service_pin: str,
+    devices: Mapping[str, ManagedDevice],
+    door_sensor: DoorSensor | None,
+    temperature_sensor: TemperatureSensor | None,
+    critical_temperature_celsius: float,
+    idle_timeout_s: float,
+) -> tuple[
+    TransactionCoordinator,
+    PaymentCoordinator,
+    VendingController,
+    RecoveryManager,
+    PickupTimeoutCoordinator,
+    ServiceModeCoordinator,
+    HealthMonitor,
+    IdleTimeoutCoordinator,
+    DisplayRotationController,
+]:
     transaction_coordinator = TransactionCoordinator()
     payment_coordinator = PaymentCoordinator(
         validator=validator,
@@ -292,9 +312,6 @@ def build_application_core(
         temperature_sensor=temperature_sensor,
         critical_temperature_celsius=critical_temperature_celsius,
     )
-    watchdog_device = devices.get("watchdog")
-    watchdog = watchdog_device if isinstance(watchdog_device, WatchdogAdapter) else None
-
     idle_timeout_coordinator = IdleTimeoutCoordinator(
         payment_coordinator=payment_coordinator,
         transaction_coordinator=transaction_coordinator,
@@ -310,6 +327,27 @@ def build_application_core(
         machine_status_service=machine_status_service,
     )
 
+    return (
+        transaction_coordinator,
+        payment_coordinator,
+        vending_controller,
+        recovery_manager,
+        pickup_timeout_coordinator,
+        service_mode_coordinator,
+        health_monitor,
+        idle_timeout_coordinator,
+        display_rotation_controller,
+    )
+
+
+def _register_bus_handlers(
+    command_bus: CommandBus,
+    event_bus: EventBus,
+    vending_controller: VendingController,
+    recovery_manager: RecoveryManager,
+    service_mode_coordinator: ServiceModeCoordinator,
+    pickup_timeout_coordinator: PickupTimeoutCoordinator,
+) -> None:
     command_bus.register_handler(StartPurchase, vending_controller.start_purchase)
     command_bus.register_handler(AcceptCash, vending_controller.accept_cash)
     command_bus.register_handler(CancelPurchase, vending_controller.cancel_purchase)
@@ -317,16 +355,21 @@ def build_application_core(
     command_bus.register_handler(ToggleProductCommand, vending_controller.handle_toggle_product)
     command_bus.register_handler(
         RecoverInterruptedTransaction,
-        lambda command: recovery_manager.recover_transaction(command.transaction_id, command.correlation_id),
+        lambda command: recovery_manager.recover_transaction(
+            command.transaction_id, command.correlation_id
+        ),
     )
     command_bus.register_handler(EnterServiceMode, service_mode_coordinator.enter_service_mode)
     command_bus.register_handler(LockPurchaseButton, service_mode_coordinator.lock_purchase_button)
+
     event_bus.subscribe_critical("vend_authorized", vending_controller.handle_vend_authorized)
     event_bus.subscribe_best_effort(
         "delivery_window_opened",
         pickup_timeout_coordinator.handle_delivery_window_opened,
     )
-    event_bus.subscribe_best_effort("pickup_confirmed", pickup_timeout_coordinator.handle_pickup_finished)
+    event_bus.subscribe_best_effort(
+        "pickup_confirmed", pickup_timeout_coordinator.handle_pickup_finished
+    )
     event_bus.subscribe_best_effort(
         "transaction_completed",
         pickup_timeout_coordinator.handle_pickup_finished,
@@ -334,6 +377,85 @@ def build_application_core(
     event_bus.subscribe_best_effort(
         "transaction_cancelled",
         pickup_timeout_coordinator.handle_pickup_finished,
+    )
+
+
+def build_application_core(
+    *,
+    validator: BillValidator,
+    change_dispenser: ChangeDispenser,
+    motor_controller: MotorController,
+    window_controller: WindowController,
+    inventory_service: InventoryService,
+    money_inventory: MoneyInventory,
+    devices: Mapping[str, ManagedDevice],
+    accepted_bill_denominations: tuple[int, ...] = (),
+    door_sensor: DoorSensor | None = None,
+    temperature_sensor: TemperatureSensor | None = None,
+    inventory_sensor: InventorySensor | None = None,
+    initial_state: MachineState = MachineState.IDLE,
+    critical_temperature_celsius: float = 8.0,
+    health_poll_interval_s: float = 0.5,
+    validator_event_timeout_s: float = 0.05,
+    watchdog_timeout_s: float = 30.0,
+    pickup_timeout_s: float = 60.0,
+    journal: ApplicationJournal | None = None,
+    service_pin: str = "0000",
+    idle_timeout_s: float = 120.0,
+) -> ApplicationCore:
+    event_bus = EventBus()
+    command_bus = CommandBus()
+    fsm = StateMachineEngine(initial_state=initial_state)
+
+    change_manager, machine_status_service = _setup_services(
+        money_inventory=money_inventory,
+        change_dispenser=change_dispenser,
+        accepted_bill_denominations=accepted_bill_denominations,
+        initial_state=initial_state,
+    )
+
+    application_journal = _setup_journal(journal)
+
+    (
+        transaction_coordinator,
+        payment_coordinator,
+        vending_controller,
+        recovery_manager,
+        pickup_timeout_coordinator,
+        service_mode_coordinator,
+        health_monitor,
+        idle_timeout_coordinator,
+        display_rotation_controller,
+    ) = _create_orchestrators(
+        validator=validator,
+        change_manager=change_manager,
+        event_bus=event_bus,
+        fsm=fsm,
+        machine_status_service=machine_status_service,
+        application_journal=application_journal,
+        inventory_service=inventory_service,
+        motor_controller=motor_controller,
+        window_controller=window_controller,
+        inventory_sensor=inventory_sensor,
+        pickup_timeout_s=pickup_timeout_s,
+        service_pin=service_pin,
+        devices=devices,
+        door_sensor=door_sensor,
+        temperature_sensor=temperature_sensor,
+        critical_temperature_celsius=critical_temperature_celsius,
+        idle_timeout_s=idle_timeout_s,
+    )
+
+    watchdog_device = devices.get("watchdog")
+    watchdog = watchdog_device if isinstance(watchdog_device, WatchdogAdapter) else None
+
+    _register_bus_handlers(
+        command_bus=command_bus,
+        event_bus=event_bus,
+        vending_controller=vending_controller,
+        recovery_manager=recovery_manager,
+        service_mode_coordinator=service_mode_coordinator,
+        pickup_timeout_coordinator=pickup_timeout_coordinator,
     )
 
     return ApplicationCore(
