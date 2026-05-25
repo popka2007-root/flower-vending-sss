@@ -4,22 +4,12 @@ from __future__ import annotations
 
 from flower_vending.app.event_bus import EventBus
 from flower_vending.app.fsm import MachineState, StateMachineEngine
-from flower_vending.app.journal import (
-    ApplicationJournal,
-    JournalOutcome,
-    NoopApplicationJournal,
-)
+from flower_vending.app.journal import ApplicationJournal, JournalOutcome, NoopApplicationJournal
 from flower_vending.app.orchestrators.payment_coordinator import PaymentCoordinator
-from flower_vending.app.orchestrators.transaction_coordinator import (
-    TransactionCoordinator,
-)
+from flower_vending.app.orchestrators.transaction_coordinator import TransactionCoordinator
 from flower_vending.app.services.inventory_service import InventoryService
 from flower_vending.app.services.machine_status_service import MachineStatusService
-from flower_vending.devices.interfaces import (
-    InventorySensor,
-    MotorController,
-    WindowController,
-)
+from flower_vending.devices.interfaces import InventorySensor, MotorController, WindowController
 from flower_vending.domain.commands.purchase_commands import (
     AcceptCash,
     CancelPurchase,
@@ -34,7 +24,6 @@ from flower_vending.domain.events.machine_events import machine_event
 from flower_vending.domain.events.payment_events import payment_event
 from flower_vending.domain.events.vending_events import vending_event
 from flower_vending.domain.exceptions import InventoryMismatchError
-from flower_vending.app.orchestrators.mixins import TransactionJournalingMixin
 
 
 class VendingController(JournalingMixin):
@@ -80,14 +69,10 @@ class VendingController(JournalingMixin):
             price_minor_units=command.price_minor_units,
             currency=command.currency,
         )
-        self._machine_status_service.set_active_transaction(
-            transaction.transaction_id.value
-        )
+        self._machine_status_service.set_active_transaction(transaction.transaction_id.value)
         self._fsm.transition(MachineState.PRODUCT_SELECTED, "product_selected")
         await self._motor_controller.stop_motion()
-        self._fsm.transition(
-            MachineState.CHECKING_AVAILABILITY, "availability_check_requested"
-        )
+        self._fsm.transition(MachineState.CHECKING_AVAILABILITY, "availability_check_requested")
         self._machine_status_service.ensure_sales_allowed()
         self._fsm.transition(MachineState.CHECKING_CHANGE, "change_check_requested")
         self._fsm.transition(MachineState.WAITING_FOR_PAYMENT, "waiting_for_payment")
@@ -131,9 +116,7 @@ class VendingController(JournalingMixin):
             logical_step="confirm_pickup.close_window",
         )
         try:
-            await self._window_controller.close_window(
-                correlation_id=command.correlation_id
-            )
+            await self._window_controller.close_window(correlation_id=command.correlation_id)
         except Exception as exc:
             transaction.mark_faulted()
             self._record_outcome(
@@ -215,12 +198,8 @@ class VendingController(JournalingMixin):
             self._fsm.transition(MachineState.FAULT, "motor_fault")
             self._machine_status_service.set_machine_state(self._fsm.current_state)
             await self._event_bus.publish(
-                vending_event(
-                    "machine_faulted",
-                    correlation_id=transaction.correlation_id.value,
-                    transaction_id=transaction.transaction_id.value,
-                    faults=["motor_fault"],
-                )
+                vending_event("machine_faulted", correlation_id=transaction.correlation_id.value,
+                              transaction_id=transaction.transaction_id.value, faults=["motor_fault"])
             )
             raise
         self._record_outcome(
@@ -261,9 +240,7 @@ class VendingController(JournalingMixin):
             logical_step="handle_vend_authorized.open_window",
         )
         try:
-            await self._window_controller.open_window(
-                correlation_id=transaction.correlation_id.value
-            )
+            await self._window_controller.open_window(correlation_id=transaction.correlation_id.value)
         except Exception:
             transaction.mark_faulted()
             self._record_outcome(
@@ -277,12 +254,8 @@ class VendingController(JournalingMixin):
             self._fsm.transition(MachineState.FAULT, "delivery_window_fault")
             self._machine_status_service.set_machine_state(self._fsm.current_state)
             await self._event_bus.publish(
-                vending_event(
-                    "machine_faulted",
-                    correlation_id=transaction.correlation_id.value,
-                    transaction_id=transaction.transaction_id.value,
-                    faults=["delivery_window_fault"],
-                )
+                vending_event("machine_faulted", correlation_id=transaction.correlation_id.value,
+                              transaction_id=transaction.transaction_id.value, faults=["delivery_window_fault"])
             )
             raise
         self._record_outcome(
@@ -292,9 +265,7 @@ class VendingController(JournalingMixin):
             outcome=JournalOutcome.SUCCEEDED,
         )
         transaction.mark_window_opened()
-        self._fsm.transition(
-            MachineState.WAITING_FOR_CUSTOMER_PICKUP, "delivery_window_opened"
-        )
+        self._fsm.transition(MachineState.WAITING_FOR_CUSTOMER_PICKUP, "delivery_window_opened")
         self._machine_status_service.set_machine_state(self._fsm.current_state)
         await self._event_bus.publish(
             vending_event(
@@ -304,11 +275,9 @@ class VendingController(JournalingMixin):
             )
         )
 
-
     async def handle_toggle_product(self, command: ToggleProductCommand) -> tuple[str, bool]:
         product, slot = self._inventory_service.set_product_enabled(
-            command.product_id,
-            command.enabled,
+            command.product_id, command.enabled,
         )
         state = product.enabled
         self._machine_status_service.set_machine_state(self._fsm.current_state)

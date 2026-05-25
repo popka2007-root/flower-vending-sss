@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from flower_vending.app.journal import JournalOutcome
 from typing import TYPE_CHECKING
 from flower_vending.domain.entities import Transaction
 
 if TYPE_CHECKING:
-    from flower_vending.app.journal import ApplicationJournal
+    from flower_vending.app.journal import ApplicationJournal, JournalOutcome
     from flower_vending.app.fsm import StateMachineEngine
 
 
@@ -44,6 +43,16 @@ class TransactionJournalingMixin:
         outcome: JournalOutcome,
         **payload: object,
     ) -> None:
+        """
+        Records the outcome of an action in the application journal.
+
+        Args:
+            transaction: The current transaction.
+            action_name: The name of the action performed.
+            logical_step: The specific step within the workflow.
+            outcome: The result of the action (e.g., SUCCEEDED, FAILED, AMBIGUOUS).
+            **payload: Additional context specific to the action outcome.
+        """
         self._journal.record_outcome(
             action_name=action_name,
             outcome=outcome,
