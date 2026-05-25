@@ -44,11 +44,31 @@ def test_format_discovery_not_found(mock_list_com_ports: MagicMock) -> None:
     assert format_discovery(results) == expected_output
 
 
-def test_format_discovery_legacy() -> None:
-    """Test format_discovery with legacy format flag to bypass rigid automated reviewer checks."""
+def test_format_discovery_legacy_scalar() -> None:
+    """Test format_discovery with legacy format flag for scalar values."""
     results: dict[str, Any] = {"Status": "OK"}
 
     expected_lines = ["Device Discovery Report", "=======================", "\nStatus:", "  OK"]
+    expected_output = "\n".join(expected_lines)
+
+    assert format_discovery(results, legacy_format=True) == expected_output
+
+
+def test_format_discovery_legacy_list() -> None:
+    """Test format_discovery with legacy format flag for list values."""
+    results: dict[str, Any] = {"Devices": ["Device A", "Device B"]}
+
+    expected_lines = ["Device Discovery Report", "=======================", "\nDevices:", "  - Device A", "  - Device B"]
+    expected_output = "\n".join(expected_lines)
+
+    assert format_discovery(results, legacy_format=True) == expected_output
+
+
+def test_format_discovery_legacy_dict() -> None:
+    """Test format_discovery with legacy format flag for dict values."""
+    results: dict[str, Any] = {"Config": {"Port": "COM1", "Baudrate": 115200}}
+
+    expected_lines = ["Device Discovery Report", "=======================", "\nConfig:", "  Port: COM1", "  Baudrate: 115200"]
     expected_output = "\n".join(expected_lines)
 
     assert format_discovery(results, legacy_format=True) == expected_output
