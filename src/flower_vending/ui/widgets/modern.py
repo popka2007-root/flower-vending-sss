@@ -53,6 +53,7 @@ def _font(size: int, weight: int = Typography.WEIGHTS["normal"]) -> QFont:
     f.setFamilies([f.strip().strip('"') for f in Typography.FONT_FAMILY.split(",")])
     f.setPixelSize(size)
     from PySide6.QtGui import QFont as _QFont
+
     _weight_map = {
         300: _QFont.Weight.Light,
         400: _QFont.Weight.Normal,
@@ -405,6 +406,7 @@ class ProductCard(QFrame):
 
         if image_path:
             from PySide6.QtGui import QPixmap
+
             pix = QPixmap(image_path)
             if not pix.isNull():
                 scaled = pix.scaled(
@@ -575,7 +577,11 @@ class WindowStatusCard(QFrame):
         self.setMinimumHeight(140)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        color_map = {"free": BrandColors.GREEN_600, "busy": "#CA8A04", "maintenance": BrandColors.RED_600}
+        color_map = {
+            "free": BrandColors.GREEN_600,
+            "busy": "#CA8A04",
+            "maintenance": BrandColors.RED_600,
+        }
         border_color = color_map.get(status, BrandColors.RED_600)
         self.setStyleSheet(f"QFrame#Card {{ border-left: 4px solid {border_color}; }}")
 
@@ -597,8 +603,12 @@ class WindowStatusCard(QFrame):
         info.addWidget(self._title)
 
         self._status_badge = StatusBadge(
-            text={"free": "Свободно", "busy": "Занято", "maintenance": "Обслуживание"}.get(status, status),
-            status={"free": "success", "busy": "warning", "maintenance": "error"}.get(status, "info"),
+            text={"free": "Свободно", "busy": "Занято", "maintenance": "Обслуживание"}.get(
+                status, status
+            ),
+            status={"free": "success", "busy": "warning", "maintenance": "error"}.get(
+                status, "info"
+            ),
         )
         info.addWidget(self._status_badge)
 
@@ -628,18 +638,31 @@ class WindowStatusCard(QFrame):
             f"border: none; background: {BrandColors.RED_600 if status != 'maintenance' else BrandColors.PURPLE_600}; "
             f"color: #FFFFFF; font-size: 13px; }}"
         )
-        maint_btn.clicked.connect(lambda: self.action_requested.emit(f"window_toggle_maintenance:{window_id}"))
+        maint_btn.clicked.connect(
+            lambda: self.action_requested.emit(f"window_toggle_maintenance:{window_id}")
+        )
         actions.addWidget(maint_btn)
 
         layout.addLayout(actions)
 
     def set_status(self, status: str, detail: str = "") -> None:
         self._status = status
-        color_map = {"free": BrandColors.GREEN_600, "busy": "#CA8A04", "maintenance": BrandColors.RED_600}
+        color_map = {
+            "free": BrandColors.GREEN_600,
+            "busy": "#CA8A04",
+            "maintenance": BrandColors.RED_600,
+        }
         border_color = color_map.get(status, BrandColors.RED_600)
         self.setStyleSheet(f"QFrame#Card {{ border-left: 4px solid {border_color}; }}")
-        self._status_badge.setProperty("status", {"free": "success", "busy": "warning", "maintenance": "error"}.get(status, "info"))
-        self._status_badge.setText({"free": "Свободно", "busy": "Занято", "maintenance": "Обслуживание"}.get(status, status))
+        self._status_badge.setProperty(
+            "status",
+            {"free": "success", "busy": "warning", "maintenance": "error"}.get(status, "info"),
+        )
+        self._status_badge.setText(
+            {"free": "Свободно", "busy": "Занято", "maintenance": "Обслуживание"}.get(
+                status, status
+            )
+        )
         repolish(self._status_badge)
         self._detail.setText(detail)
 
@@ -727,7 +750,9 @@ class AnimatedCheckLabel(QLabel):
 class SpinnerWidget(QWidget):
     """Animated spinning loader."""
 
-    def __init__(self, size: int = 64, color: str = "#EC4899", parent: QWidget | None = None) -> None:
+    def __init__(
+        self, size: int = 64, color: str = "#EC4899", parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self.setFixedSize(size, size)
         self._color = QColor(color)

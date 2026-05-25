@@ -39,9 +39,15 @@ class PaymentPresenter:
             subtitle=self._payment_subtitle(payment_method),
             product_name=transaction.product_name,
             price_text=format_money(transaction.price_minor_units, transaction.currency_code),
-            accepted_text=format_money(transaction.accepted_minor_units, transaction.currency_code) if not is_non_cash else "",
-            remaining_text=format_money(remaining_minor, transaction.currency_code) if not is_non_cash else "",
-            change_text=format_money(transaction.change_due_minor_units, transaction.currency_code) if not is_non_cash else "",
+            accepted_text=format_money(transaction.accepted_minor_units, transaction.currency_code)
+            if not is_non_cash
+            else "",
+            remaining_text=format_money(remaining_minor, transaction.currency_code)
+            if not is_non_cash
+            else "",
+            change_text=format_money(transaction.change_due_minor_units, transaction.currency_code)
+            if not is_non_cash
+            else "",
             help_text=self._payment_help(payment_method),
             banner=banner,
             cancel_action=ActionButtonViewModel("cancel_purchase", "Отменить покупку"),
@@ -52,7 +58,9 @@ class PaymentPresenter:
                     label=format_money(denomination, transaction.currency_code),
                 )
                 for denomination in quick_insert_denominations
-            ) if not is_non_cash else (),
+            )
+            if not is_non_cash
+            else (),
         )
 
     @staticmethod

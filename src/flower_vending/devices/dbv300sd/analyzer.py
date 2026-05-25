@@ -109,7 +109,9 @@ async def probe_port(
     return result
 
 
-async def analyze_port(port: str, read_size: int = 32, timeout_s: float = 0.5) -> list[ProtocolProbeResult]:
+async def analyze_port(
+    port: str, read_size: int = 32, timeout_s: float = 0.5
+) -> list[ProtocolProbeResult]:
     results: list[ProtocolProbeResult] = []
 
     # Phase 1: Try different baud rates with standard probes
@@ -117,8 +119,12 @@ async def analyze_port(port: str, read_size: int = 32, timeout_s: float = 0.5) -
         for parity in _PARITIES:
             for label, tx_hex in _PROBES[:3]:
                 result = await probe_port(
-                    port, baudrate=baud, parity=parity,
-                    tx_hex=tx_hex, read_size=read_size, timeout_s=timeout_s,
+                    port,
+                    baudrate=baud,
+                    parity=parity,
+                    tx_hex=tx_hex,
+                    read_size=read_size,
+                    timeout_s=timeout_s,
                 )
                 results.append(result)
 
@@ -128,8 +134,12 @@ async def analyze_port(port: str, read_size: int = 32, timeout_s: float = 0.5) -
         best = working[0]
         for label, tx_hex in _PROBES[3:]:
             result = await probe_port(
-                port, baudrate=best.baudrate, parity=best.parity,
-                tx_hex=tx_hex, read_size=read_size, timeout_s=timeout_s,
+                port,
+                baudrate=best.baudrate,
+                parity=best.parity,
+                tx_hex=tx_hex,
+                read_size=read_size,
+                timeout_s=timeout_s,
             )
             results.append(result)
 

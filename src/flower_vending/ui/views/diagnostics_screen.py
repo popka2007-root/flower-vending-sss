@@ -49,7 +49,7 @@ class DiagnosticsScreenWidget(QWidget):
 
         state_card = QWidget()
         state_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;"
+            f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;"
         )
         state_layout = QVBoxLayout(state_card)
         state_layout.setContentsMargins(20, 16, 20, 16)
@@ -68,7 +68,7 @@ class DiagnosticsScreenWidget(QWidget):
 
         blockers_card = QWidget()
         blockers_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;"
+            f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;"
         )
         blockers_layout = QVBoxLayout(blockers_card)
         blockers_layout.setContentsMargins(20, 16, 20, 16)
@@ -88,7 +88,7 @@ class DiagnosticsScreenWidget(QWidget):
 
         devices_card = QWidget()
         devices_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;"
+            f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;"
         )
         devices_layout = QVBoxLayout(devices_card)
         devices_layout.setContentsMargins(20, 16, 20, 16)
@@ -105,7 +105,7 @@ class DiagnosticsScreenWidget(QWidget):
 
         events_card = QWidget()
         events_card.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;"
+            f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;"
         )
         events_layout = QVBoxLayout(events_card)
         events_layout.setContentsMargins(20, 16, 20, 16)

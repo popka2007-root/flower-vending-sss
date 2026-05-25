@@ -27,6 +27,8 @@ from flower_vending.domain.commands.purchase_commands import (
     StartPurchase,
 )
 from flower_vending.domain.commands.service_commands import ToggleProductCommand
+from flower_vending.app.orchestrators.journaling_mixin import JournalingMixin
+from flower_vending.domain.entities import Transaction
 from flower_vending.domain.events import DomainEvent
 from flower_vending.domain.events.machine_events import machine_event
 from flower_vending.domain.events.payment_events import payment_event
@@ -35,7 +37,7 @@ from flower_vending.domain.exceptions import InventoryMismatchError
 from flower_vending.app.orchestrators.mixins import TransactionJournalingMixin
 
 
-class VendingController(TransactionJournalingMixin):
+class VendingController(JournalingMixin):
     def __init__(
         self,
         *,
@@ -302,9 +304,8 @@ class VendingController(TransactionJournalingMixin):
             )
         )
 
-    async def handle_toggle_product(
-        self, command: ToggleProductCommand
-    ) -> tuple[str, bool]:
+
+    async def handle_toggle_product(self, command: ToggleProductCommand) -> tuple[str, bool]:
         product, slot = self._inventory_service.set_product_enabled(
             command.product_id,
             command.enabled,
@@ -321,3 +322,4 @@ class VendingController(TransactionJournalingMixin):
             )
         )
         return command.product_id, state
+

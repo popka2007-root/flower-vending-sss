@@ -21,7 +21,7 @@ from flower_vending.ui.widgets.modern import ToggleSwitch
 
 def _make_section(title: str, parent: QWidget | None = None) -> tuple[QWidget, QVBoxLayout]:
     outer = QWidget(parent)
-    outer.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;")
+    outer.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;")
 
     outer_layout = QVBoxLayout(outer)
     outer_layout.setContentsMargins(0, 0, 0, 0)

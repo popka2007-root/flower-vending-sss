@@ -180,7 +180,7 @@ class ProductDetailsScreenWidget(QWidget):
         chip.setFixedHeight(64)
         chip.setMinimumWidth(140)
         chip.setMaximumWidth(250)
-        chip.setStyleSheet(f"background: #FFFFFF; border: none; border-radius: {Radius.XL}px;")
+        chip.setStyleSheet(f"background: #FFFFFF; border: none; " f"border-radius: {Radius.XL}px;")
         chip_layout = QVBoxLayout(chip)
         chip_layout.setContentsMargins(16, 10, 16, 10)
         icon_map = {

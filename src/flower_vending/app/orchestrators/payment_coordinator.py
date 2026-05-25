@@ -16,6 +16,7 @@ from flower_vending.app.services.machine_status_service import MachineStatusServ
 from flower_vending.devices.contracts import BillValidatorEvent, BillValidatorEventType
 from flower_vending.devices.interfaces import BillValidator
 from flower_vending.domain.aggregates import PurchaseTransactionAggregate
+from flower_vending.app.orchestrators.journaling_mixin import JournalingMixin
 from flower_vending.domain.entities import PaymentStatus, Transaction
 from flower_vending.domain.events.device_events import device_event
 from flower_vending.domain.events.payment_events import payment_event
@@ -27,7 +28,7 @@ from flower_vending.payments.change_manager import ChangeManager
 from flower_vending.app.orchestrators.mixins import TransactionJournalingMixin
 
 
-class PaymentCoordinator(TransactionJournalingMixin):
+class PaymentCoordinator(JournalingMixin):
     def __init__(
         self,
         *,
@@ -439,3 +440,5 @@ class PaymentCoordinator(TransactionJournalingMixin):
         else:
             self._fsm.force_state(MachineState.RECOVERY_PENDING, reason)
         self._machine_status_service.set_machine_state(self._fsm.current_state)
+
+

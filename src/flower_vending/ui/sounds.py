@@ -9,6 +9,7 @@ def play_beep(frequency: int = 880, duration: int = 150) -> None:
     if sys.platform == "win32":
         try:
             import winsound
+
             winsound.Beep(frequency, duration)
         except Exception:
             pass

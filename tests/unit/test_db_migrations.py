@@ -178,9 +178,9 @@ class TestMigrationV1ToV2:
                 "SELECT sql FROM sqlite_master WHERE name = 'transaction_journal' AND type = 'table'"
             )
             assert row is not None
-            assert "FOREIGN KEY" not in row["sql"], (
-                "v2 schema should remove FK from transaction_journal"
-            )
+            assert (
+                "FOREIGN KEY" not in row["sql"]
+            ), "v2 schema should remove FK from transaction_journal"
         finally:
             db.close()
 
@@ -308,8 +308,8 @@ class TestMigrationV1ToV2:
             ensure_sqlite_schema(db2)
             rows = db2.query_all("SELECT name FROM sqlite_master WHERE type='table'")
             actual_tables = {row["name"] for row in rows}
-            assert expected_tables.issubset(actual_tables), (
-                f"missing tables: {expected_tables - actual_tables}"
-            )
+            assert expected_tables.issubset(
+                actual_tables
+            ), f"missing tables: {expected_tables - actual_tables}"
         finally:
             db2.close()

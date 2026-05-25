@@ -39,7 +39,7 @@ class WindowsTab(QWidget):
 
         log_widget = QWidget()
         log_widget.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;"
+            f"background: #FFFFFF; border-radius: {Radius.XL}px; " f"border: none;"
         )
         log_layout = QVBoxLayout(log_widget)
         log_layout.setContentsMargins(20, 16, 20, 16)

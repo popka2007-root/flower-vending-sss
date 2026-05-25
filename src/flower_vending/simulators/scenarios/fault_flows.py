@@ -173,7 +173,8 @@ async def run_door_open_scenario() -> ScenarioResult:
         except SaleBlockedError as exc:
             return harness.scenario_result(
                 scenario_name="door_open",
-                success="service_door_open" in harness.core.machine_status_service.runtime.status.sale_blockers,
+                success="service_door_open"
+                in harness.core.machine_status_service.runtime.status.sale_blockers,
                 errors=[str(exc)],
                 notes=["health monitor blocked new sales while service door remained open"],
             )
@@ -196,7 +197,8 @@ async def run_critical_temperature_scenario() -> ScenarioResult:
         except SaleBlockedError as exc:
             return harness.scenario_result(
                 scenario_name="critical_temperature",
-                success="critical_temperature" in harness.core.machine_status_service.runtime.status.sale_blockers,
+                success="critical_temperature"
+                in harness.core.machine_status_service.runtime.status.sale_blockers,
                 errors=[str(exc)],
                 notes=["health monitor blocked new sales at critical chamber temperature"],
             )
@@ -220,7 +222,9 @@ async def run_inventory_mismatch_scenario() -> ScenarioResult:
                 scenario_name="inventory_mismatch",
                 success=True,
                 errors=[str(exc)],
-                notes=["physical slot sensor contradicted accounting inventory before payment started"],
+                notes=[
+                    "physical slot sensor contradicted accounting inventory before payment started"
+                ],
             )
         return harness.scenario_result(
             scenario_name="inventory_mismatch",

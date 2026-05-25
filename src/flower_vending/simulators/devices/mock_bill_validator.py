@@ -11,7 +11,11 @@ from flower_vending.devices.contracts import (
     DeviceOperationalState,
     MoneyValue,
 )
-from flower_vending.devices.exceptions import DeviceAdapterError, DeviceNotStartedError, UnsupportedDeviceOperationError
+from flower_vending.devices.exceptions import (
+    DeviceAdapterError,
+    DeviceNotStartedError,
+    UnsupportedDeviceOperationError,
+)
 from flower_vending.devices.interfaces import BillValidator
 from flower_vending.simulators.devices.base import MockManagedDevice
 from flower_vending.simulators.faults import SimulatorFaultCode
@@ -157,7 +161,9 @@ class MockBillValidator(MockManagedDevice, BillValidator):
                     validator_name=self.name,
                     correlation_id=correlation_id,
                     bill_value=bill_value,
-                    details={"reason": rejected_plan.message if rejected_plan else "unsupported_bill"},
+                    details={
+                        "reason": rejected_plan.message if rejected_plan else "unsupported_bill"
+                    },
                 )
             )
             return

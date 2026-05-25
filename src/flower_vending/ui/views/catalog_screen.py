@@ -222,7 +222,7 @@ class CatalogScreenWidget(QWidget):
         self.setStyleSheet(
             """
             QWidget#CustomerScreen {
-                background: #B8B8C8; 
+                background: #B8B8C8;
             }
             """
         )
@@ -424,15 +424,15 @@ class CatalogScreenWidget(QWidget):
         self._cart_checkout_btn.setFixedHeight(56)
         self._cart_checkout_btn.setFont(_f(16, 700))
         self._cart_checkout_btn.setStyleSheet(
-            f"""
-            QPushButton {{
+            """
+            QPushButton {
                 background: #6B7280;
                 border: none;
                 border-radius: 28px;
                 color: white;
-            }}
-            QPushButton:hover {{ background: #4B5563; }}
-            QPushButton:disabled {{ background: #E5E7EB; color: #9CA3AF; }}
+            }
+            QPushButton:hover { background: #4B5563; }
+            QPushButton:disabled { background: #E5E7EB; color: #9CA3AF; }
             """
         )
         self._cart_checkout_btn.clicked.connect(self._on_checkout)

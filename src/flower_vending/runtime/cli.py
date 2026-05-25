@@ -44,7 +44,9 @@ def build_parser() -> argparse.ArgumentParser:
             help="Render the command output as JSON.",
         )
 
-    validate_parser = subparsers.add_parser("validate-config", help="Validate configuration and bootstrap checks.")
+    validate_parser = subparsers.add_parser(
+        "validate-config", help="Validate configuration and bootstrap checks."
+    )
     add_config_argument(validate_parser)
     validate_parser.add_argument(
         "--prepare",
@@ -52,13 +54,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Create runtime directories such as var/data and var/log when they are missing.",
     )
 
-    diagnostics_parser = subparsers.add_parser("diagnostics", help="Start simulator runtime and print diagnostics.")
+    diagnostics_parser = subparsers.add_parser(
+        "diagnostics", help="Start simulator runtime and print diagnostics."
+    )
     add_config_argument(diagnostics_parser)
 
-    status_parser = subparsers.add_parser("status", help="Read persisted machine status from SQLite.")
+    status_parser = subparsers.add_parser(
+        "status", help="Read persisted machine status from SQLite."
+    )
     add_config_argument(status_parser)
 
-    events_parser = subparsers.add_parser("events", help="Read recent persisted events from SQLite.")
+    events_parser = subparsers.add_parser(
+        "events", help="Read recent persisted events from SQLite."
+    )
     add_config_argument(events_parser)
     events_parser.add_argument(
         "--limit",
@@ -67,12 +75,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Maximum number of recent events to render.",
     )
 
-    clear_drift_parser = subparsers.add_parser("clear-drift", help="Clear the drift_detected flag on money inventory.")
+    clear_drift_parser = subparsers.add_parser(
+        "clear-drift", help="Clear the drift_detected flag on money inventory."
+    )
     add_config_argument(clear_drift_parser)
 
-    service_parser = subparsers.add_parser("service", help="Enter service mode and print a service snapshot.")
+    service_parser = subparsers.add_parser(
+        "service", help="Enter service mode and print a service snapshot."
+    )
     add_config_argument(service_parser)
-    service_parser.add_argument("--operator", default="technician", help="Service operator identifier.")
+    service_parser.add_argument(
+        "--operator", default="technician", help="Service operator identifier."
+    )
     service_parser.add_argument("--pin", default="0000", help="4-digit service PIN.")
     service_parser.add_argument(
         "--lock-purchase",
@@ -86,7 +100,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional simulator action to apply before printing the service report.",
     )
 
-    runtime_parser = subparsers.add_parser("simulator-runtime", help="Run simulator runtime or deterministic scenarios.")
+    runtime_parser = subparsers.add_parser(
+        "simulator-runtime", help="Run simulator runtime or deterministic scenarios."
+    )
     add_config_argument(runtime_parser)
     runtime_parser.add_argument(
         "--duration",
@@ -152,7 +168,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Render the command output as JSON.",
     )
 
-    discover_parser = subparsers.add_parser("discover", help="Discover COM ports and connected hardware.")
+    discover_parser = subparsers.add_parser(
+        "discover", help="Discover COM ports and connected hardware."
+    )
     discover_parser.add_argument(
         "--json",
         action="store_true",
@@ -183,7 +201,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     analyze_parser.add_argument("--port", required=True, help="Serial port (e.g. COM3).")
     analyze_parser.add_argument("--timeout", type=float, default=0.5, help="Per-probe timeout.")
-    analyze_parser.add_argument("--read-size", type=int, default=32, help="Bytes to read per probe.")
+    analyze_parser.add_argument(
+        "--read-size", type=int, default=32, help="Bytes to read per probe."
+    )
     return parser
 
 
@@ -251,7 +271,9 @@ def _command_validate_config(args: argparse.Namespace) -> int:
 
 
 async def _command_diagnostics(args: argparse.Namespace) -> int:
-    environment = await build_simulator_environment(config_path=args.config, prepare_directories=True)
+    environment = await build_simulator_environment(
+        config_path=args.config, prepare_directories=True
+    )
     await environment.start()
     try:
         payload = environment.diagnostics_report()
@@ -284,16 +306,21 @@ def _command_events(args: argparse.Namespace) -> int:
 
 async def _command_service(args: argparse.Namespace) -> int:
     from flower_vending.runtime.bootstrap import validate_config_file
+
     config, _, _ = validate_config_file(args.config)
     pin = config.machine.service_mode.pin
 
-    environment = await build_simulator_environment(config_path=args.config, prepare_directories=True)
+    environment = await build_simulator_environment(
+        config_path=args.config, prepare_directories=True
+    )
     await environment.start()
     try:
         cid = environment.ui_facade.new_correlation_id()
         try:
             await environment.ui_facade.enter_service_mode(
-                operator_id=args.operator, correlation_id=cid, pin=args.pin or pin,
+                operator_id=args.operator,
+                correlation_id=cid,
+                pin=args.pin or pin,
             )
         except ValueError:
             print("Error: Invalid service PIN")
@@ -301,12 +328,15 @@ async def _command_service(args: argparse.Namespace) -> int:
 
         if args.lock_purchase:
             await environment.ui_facade.lock_purchase_button(
-                operator_id=args.operator, locked=True, correlation_id=cid,
+                operator_id=args.operator,
+                locked=True,
+                correlation_id=cid,
             )
 
         for action_id in args.action:
             await environment.simulator_controls.execute_action(
-                action_id, correlation_id=cid,
+                action_id,
+                correlation_id=cid,
             )
 
         d = environment.ui_facade.diagnostics_snapshot()
@@ -316,7 +346,11 @@ async def _command_service(args: argparse.Namespace) -> int:
             "sale_blockers": list(d.machine.sale_blockers),
             "unresolved_transaction_ids": list(d.unresolved_transaction_ids),
             "recent_events": [
-                {"event_type": e.event_type, "correlation_id": e.correlation_id, "summary": str(e.summary)}
+                {
+                    "event_type": e.event_type,
+                    "correlation_id": e.correlation_id,
+                    "summary": str(e.summary),
+                }
                 for e in d.recent_events
             ],
         }
@@ -330,7 +364,9 @@ async def _command_service(args: argparse.Namespace) -> int:
 
 
 async def _command_clear_drift(args: argparse.Namespace) -> int:
-    environment = await build_simulator_environment(config_path=args.config, prepare_directories=True)
+    environment = await build_simulator_environment(
+        config_path=args.config, prepare_directories=True
+    )
     await environment.start()
     try:
         environment.ui_facade.clear_drift()
@@ -359,7 +395,9 @@ async def _command_simulator_runtime(args: argparse.Namespace) -> int:
             print(_format_scenarios(results))
         return 0 if all(result.success for result in results) else 1
 
-    environment = await build_simulator_environment(config_path=args.config, prepare_directories=True)
+    environment = await build_simulator_environment(
+        config_path=args.config, prepare_directories=True
+    )
     await environment.start()
     try:
         diagnostics_payload = environment.diagnostics_report()
@@ -375,8 +413,9 @@ async def _command_simulator_runtime(args: argparse.Namespace) -> int:
 
 
 async def _command_run(args: argparse.Namespace) -> int:
-
-    environment = await build_production_environment(config_path=args.config, prepare_directories=True)
+    environment = await build_production_environment(
+        config_path=args.config, prepare_directories=True
+    )
     await environment.start()
     try:
         payload = environment.diagnostics_report()
@@ -502,7 +541,10 @@ def _format_diagnostics(payload: dict[str, Any]) -> str:
     lines.extend(f"  - {device['device_name']}: {device['state']}" for device in payload["devices"])
     lines.append("Recent events:")
     if payload["recent_events"]:
-        lines.extend(f"  - {item['event_type']} [{item['correlation_id']}] {item['summary']}" for item in payload["recent_events"])
+        lines.extend(
+            f"  - {item['event_type']} [{item['correlation_id']}] {item['summary']}"
+            for item in payload["recent_events"]
+        )
     else:
         lines.append("  - none")
     lines.append("Platform extension points:")
@@ -596,7 +638,10 @@ def _format_service(payload: dict[str, Any]) -> str:
         lines.append("Unresolved transactions: none")
     lines.append("Recent events:")
     if payload["recent_events"]:
-        lines.extend(f"  - {item['event_type']} [{item['correlation_id']}] {item['summary']}" for item in payload["recent_events"])
+        lines.extend(
+            f"  - {item['event_type']} [{item['correlation_id']}] {item['summary']}"
+            for item in payload["recent_events"]
+        )
     else:
         lines.append("  - none")
     return "\n".join(lines)

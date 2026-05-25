@@ -142,7 +142,9 @@ class CashFlowIntegrationTests(AsyncHarnessTestCase):
         with self.assertRaises(SaleBlockedError):
             await harness.start_purchase(correlation_id="door-open")
 
-        self.assertIn("service_door_open", harness.core.machine_status_service.runtime.status.sale_blockers)
+        self.assertIn(
+            "service_door_open", harness.core.machine_status_service.runtime.status.sale_blockers
+        )
 
     async def test_critical_temperature_blocks_sale(self) -> None:
         harness = await self.create_harness(temperature_celsius=9.5)
@@ -150,7 +152,9 @@ class CashFlowIntegrationTests(AsyncHarnessTestCase):
         with self.assertRaises(SaleBlockedError):
             await harness.start_purchase(correlation_id="critical-temp")
 
-        self.assertIn("critical_temperature", harness.core.machine_status_service.runtime.status.sale_blockers)
+        self.assertIn(
+            "critical_temperature", harness.core.machine_status_service.runtime.status.sale_blockers
+        )
 
 
 if __name__ == "__main__":
