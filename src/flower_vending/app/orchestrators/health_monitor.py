@@ -14,9 +14,10 @@ from flower_vending.domain.entities import DeviceHealthSnapshot
 from flower_vending.domain.events.machine_events import machine_event
 from flower_vending.domain.value_objects import DeviceState
 
-# FIX: Timeout for each device health check. If a device hangs (e.g. stuck
-# serial read on a disconnected DBV-300-SD), the health monitor loop would
-# block indefinitely and never kick the watchdog (see E7).
+# Timeout for each device and sensor health check. The main loop wraps device.get_health(),
+# and we also explicitly wrap door_sensor and temperature_sensor reads to prevent
+# the health monitor loop from blocking indefinitely if any hardware hangs
+# (e.g., stuck serial read on a disconnected DBV-300-SD).
 _DEVICE_HEALTH_TIMEOUT_S: float = 5.0
 
 
