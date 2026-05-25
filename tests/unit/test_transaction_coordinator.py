@@ -94,3 +94,42 @@ def test_create_transaction_raises_if_active_is_locked(locked_status: Transactio
             slot_id="slot-2",
             price_minor_units=2000,
         )
+
+def test_restore_transactions_valid_active_id() -> None:
+    from flower_vending.domain.entities import Transaction, TransactionStatus
+    from flower_vending.domain.value_objects import TransactionId, CorrelationId, ProductId, SlotId, Amount, Currency
+
+    coordinator = TransactionCoordinator()
+
+    txn_id = TransactionId.new()
+    txn = Transaction(
+        transaction_id=txn_id,
+        correlation_id=CorrelationId("corr-1"),
+        product_id=ProductId("prod-1"),
+        slot_id=SlotId("slot-1"),
+        price=Amount(1000, Currency("RUB")),
+    )
+
+    coordinator.restore_transactions([txn], active_transaction_id=txn_id.value)
+
+    assert coordinator._active_transaction_id == txn_id.value
+    assert coordinator.active() == txn
+
+def test_restore_transactions_invalid_active_id() -> None:
+    from flower_vending.domain.exceptions import TransactionRecoveryError
+    from flower_vending.domain.entities import Transaction, TransactionStatus
+    from flower_vending.domain.value_objects import TransactionId, CorrelationId, ProductId, SlotId, Amount, Currency
+
+    coordinator = TransactionCoordinator()
+
+    txn_id = TransactionId.new()
+    txn = Transaction(
+        transaction_id=txn_id,
+        correlation_id=CorrelationId("corr-1"),
+        product_id=ProductId("prod-1"),
+        slot_id=SlotId("slot-1"),
+        price=Amount(1000, Currency("RUB")),
+    )
+
+    with pytest.raises(TransactionRecoveryError, match="not found in restored set"):
+        coordinator.restore_transactions([txn], active_transaction_id="non_existent_id")
