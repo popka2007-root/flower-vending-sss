@@ -83,3 +83,61 @@ async def test_consume_success(inventory: MoneyInventory) -> None:
     # After consume, accounting counts drop, and reserved counts drop
     assert inventory.accounting_counts_by_denomination == {10: 4, 5: 8, 1: 20}
     assert inventory.reserved_counts_by_denomination == {10: 1, 5: 2}
+
+@pytest.mark.asyncio
+async def test_available_counts(inventory: MoneyInventory) -> None:
+    available = await inventory.available_counts()
+    # inventory is:
+    # accounting_counts_by_denomination={10: 5, 5: 10, 1: 20}
+    # reserved_counts_by_denomination={10: 1, 5: 2}
+    assert available == {10: 4, 5: 8, 1: 20}
+
+
+@pytest.mark.asyncio
+async def test_available_counts_handles_over_reservation(inventory: MoneyInventory) -> None:
+    # Manually force a state where reserved > accounting
+    inventory._reserved_counts[10] = 10
+    available = await inventory.available_counts()
+    assert available == {10: 0, 5: 8, 1: 20}
+
+
+@pytest.mark.asyncio
+async def test_can_reserve_success(inventory: MoneyInventory) -> None:
+    plan = {10: 2, 5: 5, 1: 10}
+    can_reserve = await inventory.can_reserve(plan)
+    assert can_reserve is True
+
+
+@pytest.mark.asyncio
+async def test_can_reserve_insufficient(inventory: MoneyInventory) -> None:
+    plan = {10: 5} # We have 5 total, 1 reserved -> 4 available
+    can_reserve = await inventory.can_reserve(plan)
+    assert can_reserve is False
+
+
+@pytest.mark.asyncio
+async def test_release_success(inventory: MoneyInventory) -> None:
+    reserve = ChangeReserve(
+        transaction_id="txn-release",
+        reserved_counts_by_denomination={10: 1, 5: 1},
+        currency=Currency("USD"),
+    )
+    await inventory.release(reserve)
+    assert inventory.reserved_counts_by_denomination == {10: 0, 5: 1}
+
+
+@pytest.mark.asyncio
+async def test_release_bounds_to_zero(inventory: MoneyInventory) -> None:
+    reserve = ChangeReserve(
+        transaction_id="txn-release",
+        reserved_counts_by_denomination={10: 5}, # more than what's reserved
+        currency=Currency("USD"),
+    )
+    await inventory.release(reserve)
+    assert inventory.reserved_counts_by_denomination == {10: 0, 5: 2}
+
+
+def test_clear_drift(inventory: MoneyInventory) -> None:
+    inventory.drift_detected = True
+    inventory.clear_drift()
+    assert inventory.drift_detected is False
