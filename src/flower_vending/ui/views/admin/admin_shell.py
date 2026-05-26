@@ -35,6 +35,7 @@ class AdminShell(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setStyleSheet(f"background: {BrandColors.CREAM_BACKGROUND};")
         self._tabs_by_name: dict[str, QWidget] = {}
 
         layout = QHBoxLayout(self)
@@ -44,6 +45,10 @@ class AdminShell(QWidget):
         sidebar = QWidget()
         sidebar.setObjectName("AdminSidebar")
         sidebar.setFixedWidth(SIDEBAR_WIDTH)
+        sidebar.setStyleSheet(
+            f"QWidget#AdminSidebar {{ background: {BrandColors.TEXT_MAIN}; "
+            f"border-right: 1px solid {BrandColors.GRAY_200}; }}"
+        )
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
@@ -56,8 +61,7 @@ class AdminShell(QWidget):
         logo_icon = QWidget()
         logo_icon.setFixedSize(36, 36)
         logo_icon.setStyleSheet(
-            f"background: qlineargradient(x1:0 y1:0, x2:1 y2:1, "
-            f"stop:0 {BrandColors.PINK_500}, stop:1 {BrandColors.PURPLE_600}); "
+            f"background: {BrandColors.ORANGE_PRIMARY}; "
             f"border-radius: {Radius.LG}px;"
         )
         logo_icon_layout = QVBoxLayout(logo_icon)
@@ -96,7 +100,7 @@ class AdminShell(QWidget):
                 f"color: #FFFFFF; }}"
                 f'QPushButton[active="true"] {{ background: rgba(255,255,255,0.10); '
                 f"color: #FFFFFF; "
-                f"border-left: 3px solid #A78BFA; }}"
+                f"border-left: 4px solid {BrandColors.ORANGE_PRIMARY}; }}"
             )
             btn_layout = QHBoxLayout(btn)
             btn_layout.setContentsMargins(20, 0, 20, 0)
@@ -133,25 +137,23 @@ class AdminShell(QWidget):
 
         exit_btn = QPushButton()
         exit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        exit_btn.setFixedHeight(48)
+        exit_btn.setFixedHeight(56)
         exit_btn.setStyleSheet(
-            f"QPushButton {{ text-align: left; padding: 0 20px; border: none; "
-            f"font-size: 14px; font-weight: {Typography.WEIGHTS['medium']}; "
-            f"color: #EF4444; border-radius: 0; min-height: 48px; max-height: 48px; "
-            f"background: transparent; }}"
-            f"QPushButton:hover {{ background: #FEE2E2; }}"
+            f"QPushButton {{ border: none; background: transparent; "
+            f"border-radius: {Radius.XL}px; margin: 8px 12px; }}"
+            f"QPushButton:hover {{ background: {BrandColors.RED_100}; }}"
         )
         exit_layout = QHBoxLayout(exit_btn)
-        exit_layout.setContentsMargins(20, 0, 20, 0)
+        exit_layout.setContentsMargins(16, 0, 16, 0)
         exit_layout.setSpacing(12)
         exit_icon = QLabel()
         exit_icon.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        exit_icon.setPixmap(icon(IconName.LOG_OUT, 20, "#EF4444").pixmap(20, 20))
+        exit_icon.setPixmap(icon(IconName.LOG_OUT, 20, BrandColors.RED_600).pixmap(20, 20))
         exit_layout.addWidget(exit_icon)
         exit_lbl = QLabel("Выйти")
         exit_lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         exit_lbl.setStyleSheet(
-            f"font-size: 14px; font-weight: {Typography.WEIGHTS['medium']}; color: #EF4444;"
+            f"font-size: 15px; font-weight: {Typography.WEIGHTS['semibold']}; color: {BrandColors.RED_600};"
         )
         exit_layout.addWidget(exit_lbl)
         exit_layout.addStretch(1)

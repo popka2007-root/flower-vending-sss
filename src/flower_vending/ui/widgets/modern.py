@@ -531,7 +531,7 @@ class ToggleSwitch(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        track_color = QColor("#9333EA") if self._checked else QColor("#D1D5DB")
+        track_color = QColor(BrandColors.ORANGE_PRIMARY) if self._checked else QColor("#D1D5DB")
         p.setBrush(track_color)
         p.setPen(Qt.PenStyle.NoPen)
         p.drawRoundedRect(0, 0, 44, 24, 12, 12)
