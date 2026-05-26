@@ -1,3 +1,3 @@
-## 2024-05-25 - PySide6 ARIA Equivalents
-**Learning:** In PySide6 UI applications, the equivalent to HTML ARIA labels for icon-only buttons (like `QPushButton` without text) is the `setAccessibleName()` method. This is critical for screen reader compatibility.
-**Action:** Always verify that buttons containing only an `icon()` call also receive a `setAccessibleName()` call to ensure keyboard and screen reader accessibility.
+## 2024-05-26 - [Added Accessible Names for Screen Readers in PySide6 UI]
+**Learning:** In PySide6 applications, the equivalent of web ARIA labels for improving screen reader accessibility is setting the accessible name on widgets using `widget.setAccessibleName("Description")`. However, applying this blindly to all buttons is an anti-pattern. If a button already has text (like "Корзина" or "Оплатить 0 ₽"), `setAccessibleName` will overwrite the visible text for the screen reader, causing information loss (especially dynamic text like prices).
+**Action:** Always assign accessible names (e.g., using `setAccessibleName()`) ONLY to icon-only interactive widgets (like a logo acting as a button or an X close icon) to act as the equivalent of ARIA labels. Do not apply it to buttons or elements with existing text labels unless providing significantly *more* context.
