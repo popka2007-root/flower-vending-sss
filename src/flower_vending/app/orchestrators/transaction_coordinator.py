@@ -22,7 +22,11 @@ from flower_vending.domain.value_objects import (
 # Defined terminal states that permit a new transaction to replace the active one.
 # This prevents concurrency conflicts when confirm_pickup() or similar completes a
 # transaction but clear_active() hasn't run yet.
-_TERMINAL_STATUSES = {TransactionStatus.COMPLETED, TransactionStatus.CANCELLED}
+_TERMINAL_STATUSES = {
+    TransactionStatus.COMPLETED,
+    TransactionStatus.CANCELLED,
+    TransactionStatus.PICKUP_TIMED_OUT,
+}
 
 
 class TransactionCoordinator:
@@ -30,7 +34,15 @@ class TransactionCoordinator:
         self._transactions: dict[str, Transaction] = {}
         self._active_transaction_id: str | None = None
 
-    def _clear_active_if_terminal(self) -> None:
+    def create_transaction(
+        self,
+        *,
+        correlation_id: str,
+        product_id: str,
+        slot_id: str,
+        price_minor_units: int,
+        currency: str = "RUB",
+    ) -> Transaction:
         # Check if existing active transaction is terminal before rejecting.
         # This closes the race window between mark_window_closed() and
         # clear_active() in VendingController.confirm_pickup() (see A4, E2).
@@ -46,16 +58,6 @@ class TransactionCoordinator:
             else:
                 raise ConcurrencyConflictError("a transaction is already active")
 
-    def create_transaction(
-        self,
-        *,
-        correlation_id: str,
-        product_id: str,
-        slot_id: str,
-        price_minor_units: int,
-        currency: str = "RUB",
-    ) -> Transaction:
-        self._clear_active_if_terminal()
         transaction = Transaction(
             transaction_id=TransactionId.new(),
             correlation_id=CorrelationId(correlation_id),

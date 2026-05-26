@@ -9,7 +9,6 @@ from flower_vending.domain.exceptions import ConcurrencyConflictError
     "non_terminal_status",
     [
         TransactionStatus.CREATED,
-        TransactionStatus.PICKUP_TIMED_OUT,
     ],
 )
 def test_create_transaction_fails_if_active_not_terminal(non_terminal_status: TransactionStatus) -> None:
@@ -41,6 +40,7 @@ def test_create_transaction_fails_if_active_not_terminal(non_terminal_status: Tr
     [
         TransactionStatus.COMPLETED,
         TransactionStatus.CANCELLED,
+        TransactionStatus.PICKUP_TIMED_OUT,
     ],
 )
 def test_create_transaction_succeeds_if_active_is_terminal(terminal_status: TransactionStatus) -> None:
