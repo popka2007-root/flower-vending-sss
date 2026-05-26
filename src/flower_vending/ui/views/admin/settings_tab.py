@@ -21,7 +21,7 @@ from flower_vending.ui.widgets.modern import ToggleSwitch
 
 def _make_section(title: str, parent: QWidget | None = None) -> tuple[QWidget, QVBoxLayout]:
     outer = QWidget(parent)
-    outer.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;")
+    outer.setStyleSheet(f"background: {BrandColors.CREAM_CARD}; border-radius: {Radius.XL2}px; border: none;")
 
     outer_layout = QVBoxLayout(outer)
     outer_layout.setContentsMargins(0, 0, 0, 0)
@@ -104,12 +104,12 @@ class SettingsTab(QWidget):
         self._save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._save_btn.setFixedHeight(40)
         self._save_btn.setStyleSheet(
-            f"QPushButton {{ padding: 8px 20px; border-radius: {Radius.XL}px; "
+            f"QPushButton {{ padding: 8px 20px; border-radius: {Radius.XL2}px; "
             f"border: none; font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']}; "
-            f"background: {BrandColors.PURPLE_600}; color: #FFFFFF; }}"
-            f"QPushButton:hover {{ background: {BrandColors.PINK_500}; }}"
+            f"background: {BrandColors.ORANGE_PRIMARY}; color: #FFFFFF; }}"
+            f"QPushButton:hover {{ background: #F08A1A; }}"
         )
-        self._save_btn.clicked.connect(lambda: self.action_requested.emit("admin_save_settings"))
+        self._save_btn.clicked.connect(self._on_save)
         header.addWidget(self._save_btn)
         layout.addLayout(header)
 
@@ -127,9 +127,9 @@ class SettingsTab(QWidget):
         self._name_input.setProperty("class", "adminInput")
         self._name_input.setStyleSheet(
             f"QLineEdit {{ min-height: 42px; padding: 8px 12px; "
-            f"border: 1px solid {BrandColors.GRAY_300}; border-radius: {Radius.XL}px; "
-            f"font-size: 14px; background: {BrandColors.GRAY_100}; }}"
-            f"QLineEdit:focus {{ border-color: {BrandColors.PURPLE_600}; }}"
+            f"border: 1px solid {BrandColors.GRAY_300}; border-radius: {Radius.XL2}px; "
+            f"font-size: 14px; background: {BrandColors.GRAY_50}; }}"
+            f"QLineEdit:focus {{ border-color: {BrandColors.ORANGE_PRIMARY}; }}"
         )
         self._hours_input = QLineEdit()
         self._hours_input.setStyleSheet(self._name_input.styleSheet())
@@ -185,9 +185,9 @@ class SettingsTab(QWidget):
         pricing_section, pricing_body = _make_section("Цены и лимиты")
         _spin_style = (
             f"QSpinBox {{ min-height: 42px; padding: 8px 12px; "
-            f"border: 1px solid {BrandColors.GRAY_300}; border-radius: {Radius.XL}px; "
-            f"font-size: 14px; background: {BrandColors.GRAY_100}; }}"
-            f"QSpinBox:focus {{ border-color: {BrandColors.PURPLE_600}; }}"
+            f"border: 1px solid {BrandColors.GRAY_300}; border-radius: {Radius.XL2}px; "
+            f"font-size: 14px; background: {BrandColors.GRAY_50}; }}"
+            f"QSpinBox:focus {{ border-color: {BrandColors.ORANGE_PRIMARY}; }}"
             f"QSpinBox::up-button {{ border: none; background: transparent; width: 28px; "
             f"subcontrol-origin: border; subcontrol-position: top right; "
             f"border-left: 1px solid {BrandColors.GRAY_200}; }}"
@@ -253,6 +253,21 @@ class SettingsTab(QWidget):
         content_layout.addStretch(1)
         scroll.setWidget(content)
         layout.addWidget(scroll, 1)
+
+    def _on_save(self) -> None:
+        data = {
+            "vending_name": self._name_input.text(),
+            "working_hours": self._hours_input.text(),
+            "contact_phone": self._phone_input.text(),
+            "support_email": self._email_input.text(),
+            "min_order_amount": self._min_order_spin.value(),
+            "discount_percent": self._discount_spin.value(),
+            "price_markup": self._markup_spin.value(),
+            "restock_threshold": self._threshold_spin.value(),
+        }
+        import json
+
+        self.action_requested.emit(f"admin_save_settings:{json.dumps(data)}")
 
     def _change_pin(self) -> None:
         new_pin = self._pin_input.text().strip()

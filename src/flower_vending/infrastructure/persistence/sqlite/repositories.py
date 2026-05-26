@@ -470,6 +470,19 @@ class TransactionRepository:
             for row in rows
         )
 
+    def list_all(self) -> tuple[Transaction, ...]:
+        rows = self._database.query_all("SELECT * FROM transactions ORDER BY created_at DESC")
+        return tuple(
+            transaction_from_row(
+                row,
+                payment_session_json=self._database.loads(
+                    row["payment_session_json"], default=None
+                ),
+                change_reserve_json=self._database.loads(row["change_reserve_json"], default=None),
+            )
+            for row in rows
+        )
+
     def list_unresolved_summaries(self) -> tuple[dict[str, Any], ...]:
         rows = self._database.query_all(
             """

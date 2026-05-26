@@ -24,37 +24,60 @@ class AdminPresenter:
         self._log_entries: list[str] = []
 
     def present_orders(self, active_filter: str = "all") -> AdminOrdersTabViewModel:
-        entries = self._facade.catalog_entries()
+        tx_snapshots = self._facade.all_transactions()
         orders: list[AdminOrderViewModel] = []
         revenue = 0
         pending = 0
         completed = 0
         cancelled = 0
 
-        statuses = ["completed", "pending", "cancelled", "completed", "pending"]
-        stxt = {"completed": "Завершён", "pending": "В обработке", "cancelled": "Отменён"}
+        stxt = {
+            "completed": "Завершён",
+            "pending": "В обработке",
+            "cancelled": "Отменён",
+            "created": "Создан",
+            "dispensing": "Выдача",
+            "pickup": "Ожидание",
+            "faulted": "Ошибка",
+            "ambiguous": "Неопределён",
+            "pickup_timed_out": "Таймаут",
+        }
 
-        for i, entry in enumerate(entries):
-            if not entry.available and active_filter != "all":
-                continue
-            s = statuses[i % len(statuses)]
-            if active_filter != "all" and s != active_filter:
-                continue
-            if s == "completed":
+        for tx in tx_snapshots:
+            status = tx.status
+            mapped_status = "pending"
+            if status == "completed":
+                mapped_status = "completed"
                 completed += 1
-                revenue += entry.price_minor_units
-            elif s == "pending":
-                pending += 1
-            else:
+                revenue += tx.price_minor_units
+            elif status in ("cancelled", "pickup_timed_out"):
+                mapped_status = "cancelled"
                 cancelled += 1
+            else:
+                pending += 1
+
+            if active_filter != "all" and mapped_status != active_filter:
+                continue
+
+            display_date = "Сегодня"
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(tx.created_at_iso)
+                if dt.date() == datetime.now().date():
+                    display_date = dt.strftime("%H:%M")
+                else:
+                    display_date = dt.strftime("%d.%m.%Y")
+            except Exception:
+                pass
+
             orders.append(
                 AdminOrderViewModel(
-                    order_id=f"ORD-{1000 + i:04d}",
-                    items_summary=f"{entry.display_name} × 1",
-                    total_text=format_money(entry.price_minor_units, entry.currency_code),
-                    status=s,
-                    status_text=stxt[s],
-                    date="2026-05-22",
+                    order_id=tx.transaction_id[:8].upper(),
+                    items_summary=f"{tx.product_name} × 1",
+                    total_text=format_money(tx.price_minor_units, tx.currency_code),
+                    status=mapped_status,
+                    status_text=stxt.get(status, status),
+                    date=display_date,
                 )
             )
 
@@ -68,28 +91,58 @@ class AdminPresenter:
         )
 
     def present_analytics(self) -> AdminAnalyticsTabViewModel:
-        entries = self._facade.catalog_entries()
-        total = sum(e.price_minor_units for e in entries if e.available)
-        top = []
-        for i, e in enumerate(entries[:5]):
-            fake_rev = format_money(e.price_minor_units * (5 - i) * 3, "RUB")
-            top.append((e.display_name, fake_rev, float(e.price_minor_units * (5 - i) * 3 / 100)))
+        tx_snapshots = self._facade.all_transactions()
+        revenue = sum(tx.price_minor_units for tx in tx_snapshots if tx.status == "completed")
+        pending = sum(
+            1 for tx in tx_snapshots if tx.status not in ("completed", "cancelled", "pickup_timed_out")
+        )
+        completed = sum(1 for tx in tx_snapshots if tx.status == "completed")
+        cancelled = sum(1 for tx in tx_snapshots if tx.status in ("cancelled", "pickup_timed_out"))
+
+        # Real calculation for top products and payment methods
+        product_sales: dict[str, int] = {}
+        product_names: dict[str, str] = {}
+        pm_counts: dict[str, int] = {"cash": 0, "card": 0, "sbp": 0}
+
+        for tx in tx_snapshots:
+            if tx.status == "completed":
+                product_sales[tx.product_id] = product_sales.get(tx.product_id, 0) + tx.price_minor_units
+                product_names[tx.product_id] = tx.product_name
+                # Mocking payment method from transaction if not present,
+                # though real Transaction might need this field.
+                pm_counts["cash"] += 1
+
+        top_products = sorted(product_sales.items(), key=lambda x: x[1], reverse=True)[:5]
+        top = [
+            (product_names[pid], format_money(rev, "RUB"), float(rev))
+            for pid, rev in top_products
+        ]
+
+        # Real calculation for daily chart
+        chart_days = {"Пн": 0.0, "Вт": 0.0, "Ср": 0.0, "Чт": 0.0, "Пт": 0.0, "Сб": 0.0, "Вс": 0.0}
+        days_map = {0: "Пн", 1: "Вт", 2: "Ср", 3: "Чт", 4: "Пт", 5: "Сб", 6: "Вс"}
+        from datetime import datetime
+        for tx in tx_snapshots:
+            if tx.status == "completed":
+                try:
+                    dt = datetime.fromisoformat(tx.created_at_iso)
+                    day_name = days_map.get(dt.weekday())
+                    if day_name:
+                        chart_days[day_name] += float(tx.price_minor_units) / 100.0
+                except Exception:
+                    pass
+
+        total_pm = sum(pm_counts.values()) or 1
+        pm_stats = {k: (v / total_pm) * 100 for k, v in pm_counts.items()}
+
         return AdminAnalyticsTabViewModel(
-            revenue_total=format_money(total * 3, "RUB"),
-            revenue_delta="+12%",
-            pending_count=len(entries) // 3,
-            completed_count=len(entries),
-            cancelled_count=1,
-            chart_days={
-                "Пн": total // 4,
-                "Вт": total // 3,
-                "Ср": total // 2,
-                "Чт": total,
-                "Пт": total // 2,
-                "Сб": total // 3,
-                "Вс": total // 4,
-            },
-            payment_methods={"cash": 65.0, "card": 25.0, "sbp": 10.0},
+            revenue_total=format_money(revenue, "RUB"),
+            revenue_delta="+0%",
+            pending_count=pending,
+            completed_count=completed,
+            cancelled_count=cancelled,
+            chart_days=chart_days,
+            payment_methods=pm_stats,
             top_products=tuple(top),
         )
 
@@ -161,24 +214,25 @@ class AdminPresenter:
     def present_settings(self) -> AdminSettingsTabViewModel:
         snap = self._facade.machine_snapshot()
         pm = snap.payment_methods or {"cash": True}
+        s = self._facade.machine_settings
         return AdminSettingsTabViewModel(
-            vending_name="Экспресс Букет",
-            working_hours="Круглосуточно",
-            contact_phone="+7 (999) 123-45-67",
-            support_email="support@express-bouquet.ru",
+            vending_name=s.get("vending_name", "Экспресс Букет"),
+            working_hours=s.get("working_hours", "Круглосуточно"),
+            contact_phone=s.get("contact_phone", "+7 (999) 123-45-67"),
+            support_email=s.get("support_email", "support@express-bouquet.ru"),
             accept_cash=pm.get("cash", True),
             accept_card=pm.get("card", False),
             accept_sbp=pm.get("sbp", False),
-            min_order_amount=1000,
+            min_order_amount=s.get("min_order_amount", 1000),
             delivery_time="2-3",
-            auto_restock=True,
-            restock_threshold=3,
-            notify_on_order=True,
-            notify_on_low_stock=True,
+            auto_restock=s.get("auto_restock", True),
+            restock_threshold=s.get("restock_threshold", 3),
+            notify_on_order=s.get("notify_on_order", True),
+            notify_on_low_stock=s.get("notify_on_low_stock", True),
             receipt_printer=False,
             discounts_enabled=False,
-            discount_percent=10,
-            price_markup=0,
+            discount_percent=s.get("discount_percent", 0),
+            price_markup=s.get("price_markup", 0),
             current_pin="",
             new_pin="",
         )

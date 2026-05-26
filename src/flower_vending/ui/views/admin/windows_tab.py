@@ -39,13 +39,13 @@ class WindowsTab(QWidget):
 
         log_widget = QWidget()
         log_widget.setStyleSheet(
-            f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;"
+            f"background: {BrandColors.CREAM_CARD}; border-radius: {Radius.XL2}px; border: none;"
         )
         log_layout = QVBoxLayout(log_widget)
         log_layout.setContentsMargins(20, 16, 20, 16)
         log_layout.setSpacing(8)
         log_title = QLabel("Журнал активности")
-        log_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};")
+        log_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']}; color: {BrandColors.TEXT_MAIN};")
         log_layout.addWidget(log_title)
 
         self._log_content = QVBoxLayout()

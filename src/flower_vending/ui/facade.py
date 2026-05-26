@@ -80,6 +80,7 @@ class TransactionUiSnapshot:
     status: str
     payment_status: str
     payout_status: str
+    created_at_iso: str = ""
     pickup_timeout_active: bool = False
     pickup_timeout_remaining_s: float | None = None
 
@@ -161,6 +162,12 @@ class UiApplicationFacade:
         if transaction is None:
             return None
         return self._transaction_snapshot(transaction)
+
+    def all_transactions(self) -> tuple[TransactionUiSnapshot, ...]:
+        if self._repositories is None:
+            return tuple()
+        transactions = self._repositories.transactions.list_all()
+        return tuple(self._transaction_snapshot(tx) for tx in transactions)
 
     def diagnostics_snapshot(self) -> DiagnosticsSnapshot:
         health = self._core.health_monitor.snapshot
@@ -274,11 +281,10 @@ class UiApplicationFacade:
         self._payment_methods = {m: True for m in methods}
 
     def save_settings(self, settings: dict) -> None:
+        self._machine_settings = getattr(self, "_machine_settings", self.machine_settings).copy()
+        self._machine_settings.update(settings)
         if "payment_methods" in settings:
             self.set_payment_methods(settings["payment_methods"])
-        if "vending_name" in settings:
-            self._machine_settings = getattr(self, "_machine_settings", {})
-            self._machine_settings.update(settings)
 
     def change_pin(self, new_pin: str) -> None:
         self._machine_settings = getattr(self, "_machine_settings", {})
@@ -292,6 +298,27 @@ class UiApplicationFacade:
     @property
     def service_visible(self) -> bool:
         return self._service_visible
+
+    @property
+    def machine_settings(self) -> dict[str, Any]:
+        return getattr(
+            self,
+            "_machine_settings",
+            {
+                "vending_name": "Экспресс Букет",
+                "working_hours": "Круглосуточно",
+                "contact_phone": "+7 (999) 123-45-67",
+                "support_email": "support@express-bouquet.ru",
+                "pin": "0000",
+                "min_order_amount": 1000,
+                "discount_percent": 0,
+                "price_markup": 0,
+                "auto_restock": True,
+                "restock_threshold": 3,
+                "notify_on_order": True,
+                "notify_on_low_stock": True,
+            },
+        )
 
     async def toggle_product(
         self,
@@ -474,6 +501,7 @@ class UiApplicationFacade:
             status=transaction.status.value,
             payment_status=transaction.payment_status.value,
             payout_status=transaction.payout_status.value,
+            created_at_iso=transaction.created_at.isoformat(),
             pickup_timeout_active=pickup_timeout_remaining_s is not None,
             pickup_timeout_remaining_s=pickup_timeout_remaining_s,
         )

@@ -351,7 +351,7 @@ class CatalogScreenWidget(QWidget):
             }}
             """
         )
-        self._cart_btn.setIcon(icon(IconName.SHOPPING_BAG, 18, "#FFFFFF"))
+        self._cart_btn.setIcon(icon(IconName.SHOPPING_CART, 18, "#FFFFFF"))
         self._cart_btn.clicked.connect(self._toggle_cart)
         cbl.addWidget(self._cart_btn)
         header_layout.addWidget(self._cart_btn_wrap, 0, Qt.AlignmentFlag.AlignVCenter)

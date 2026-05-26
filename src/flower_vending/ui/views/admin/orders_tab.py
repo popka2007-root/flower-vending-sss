@@ -66,8 +66,8 @@ class OrdersTab(QWidget):
                 f"border: 1px solid rgba(0,0,0,0.08); font-size: 13px; "
                 f"font-weight: {Typography.WEIGHTS['medium']}; background: #FFFFFF; "
                 f"color: {BrandColors.GRAY_500}; }}"
-                f'QPushButton[active="true"] {{ background: {BrandColors.PURPLE_600}; '
-                f"color: #FFFFFF; border-color: {BrandColors.PURPLE_600}; }}"
+                f'QPushButton[active="true"] {{ background: {BrandColors.ORANGE_PRIMARY}; '
+                f"color: #FFFFFF; border-color: {BrandColors.ORANGE_PRIMARY}; }}"
             )
             btn.clicked.connect(
                 lambda checked, fid=filter_id: self.action_requested.emit(f"admin_filter:{fid}")
@@ -88,12 +88,13 @@ class OrdersTab(QWidget):
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.setStyleSheet(
-            f"QTableWidget {{ border: 1px solid rgba(0,0,0,0.08); border-radius: {Radius.XL}px; "
-            f"background: #FFFFFF; gridline-color: rgba(0,0,0,0.04); }}"
-            f"QTableWidget::item {{ padding: 10px 8px; }}"
-            f"QHeaderView::section {{ background: #F8FAFC; border: none; "
-            f"border-bottom: 1px solid rgba(0,0,0,0.06); padding: 12px 8px; "
-            f"font-weight: {Typography.WEIGHTS['semibold']}; font-size: 13px; color: {BrandColors.GRAY_500}; }}"
+            f"QTableWidget {{ border: 1px solid {BrandColors.GRAY_200}; "
+            f"border-radius: {Radius.XL2}px; "
+            f"background: {BrandColors.CREAM_CARD}; gridline-color: rgba(0,0,0,0.04); }}"
+            f"QTableWidget::item {{ padding: 12px 8px; color: {BrandColors.TEXT_MAIN}; }}"
+            f"QHeaderView::section {{ background: {BrandColors.GRAY_50}; border: none; "
+            f"border-bottom: 1px solid {BrandColors.GRAY_200}; padding: 12px 8px; "
+            f"font-weight: {Typography.WEIGHTS['semibold']}; font-size: 13px; color: {BrandColors.TEXT_MUTED}; }}"
         )
         layout.addWidget(self._table, 1)
 
