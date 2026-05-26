@@ -276,6 +276,7 @@ class CatalogScreenWidget(QWidget):
         logo_row.setSpacing(12)
 
         self._flower_icon = _TapLabel()
+        self._flower_icon.setAccessibleName("Логотип")
         self._flower_icon.setFixedSize(56, 56)
         self._flower_icon.setStyleSheet("background: transparent; border: none;")
         self._flower_icon.tapped.connect(self._on_title_tap)
@@ -339,10 +340,12 @@ class CatalogScreenWidget(QWidget):
         title_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self._hero_title = _TapLabel("Выбирайте с любовью")
+        self._hero_title.setAccessibleName("Заголовок")
         self._hero_title.setFont(_f(38, 400, serif=True))
         self._hero_title.setStyleSheet(f"color: {TEXT_MAIN};")
 
         self._heart_icon = _TapLabel()
+        self._heart_icon.setAccessibleName("Иконка сердца")
         self._heart_icon.setPixmap(_get_heart_pixmap(36, PRIMARY_COLOR))
 
         title_row.addStretch(1)
