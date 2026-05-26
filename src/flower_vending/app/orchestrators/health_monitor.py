@@ -14,9 +14,6 @@ from flower_vending.domain.entities import DeviceHealthSnapshot
 from flower_vending.domain.events.machine_events import machine_event
 from flower_vending.domain.value_objects import DeviceState
 
-# FIX: Timeout for each device health check. If a device hangs (e.g. stuck
-# serial read on a disconnected DBV-300-SD), the health monitor loop would
-# block indefinitely and never kick the watchdog (see E7).
 _DEVICE_HEALTH_TIMEOUT_S: float = 5.0
 
 
@@ -52,25 +49,30 @@ class HealthMonitor:
         )
 
     async def poll_once(self, correlation_id: str = "health-monitor") -> DeviceHealthSnapshot:
+        """Execute a single health monitoring pass with timeouts."""
         faults: list[str] = []
         state_map: dict[str, DeviceState] = {}
         now_iso = datetime.now(tz=timezone.utc).isoformat()
+
+        # Phase 1: Check managed devices with strict timeout handling.
         for name, device in self._devices.items():
             try:
+                # Wrap each health check in a timeout to prevent loop blocking.
                 health = await self._check_device_health(device)
-            except asyncio.TimeoutError:
-                state = DeviceState.FAULT
+                state = DeviceState(health.state.value)
                 state_map[name] = state
+                if health.state in {
+                    DeviceOperationalState.FAULT,
+                    DeviceOperationalState.RECOVERY_PENDING,
+                    DeviceOperationalState.OUT_OF_SERVICE,
+                }:
+                    faults.append(name)
+            except asyncio.TimeoutError:
+                # Handle device hangs by marking them as FAULT and recording a timeout.
+                state_map[name] = DeviceState.FAULT
                 faults.append(f"{name}_timeout")
-                continue
-            state = DeviceState(health.state.value)
-            state_map[name] = state
-            if health.state in {
-                DeviceOperationalState.FAULT,
-                DeviceOperationalState.RECOVERY_PENDING,
-                DeviceOperationalState.OUT_OF_SERVICE,
-            }:
-                faults.append(name)
+
+        # Phase 2: Update machine status based on device health.
         for name in self._devices:
             key = f"device_fault:{name}"
             device_state = state_map.get(name, DeviceState.FAULT)
@@ -82,6 +84,8 @@ class HealthMonitor:
                 self._machine_status_service.block_sales(key)
             else:
                 self._machine_status_service.unblock_sales(key)
+
+        # Phase 3: Update and publish health snapshot.
         self._snapshot = DeviceHealthSnapshot(
             validator_state=state_map.get("validator", DeviceState.UNKNOWN),
             change_dispenser_state=state_map.get("change_dispenser", DeviceState.UNKNOWN),
@@ -100,6 +104,7 @@ class HealthMonitor:
                 machine_event("machine_faulted", correlation_id=correlation_id, faults=faults)
             )
 
+        # Phase 4: Handle auxiliary sensors with explicit timeout wrapping.
         if self._door_sensor is not None:
             try:
                 door = await asyncio.wait_for(
@@ -113,8 +118,13 @@ class HealthMonitor:
                     )
                 else:
                     self._machine_status_service.unblock_sales("service_door_open")
+                self._snapshot.door_sensor_state = DeviceState.READY
             except asyncio.TimeoutError:
-                pass
+                # Mark sensor fault and block sales if reading hangs.
+                self._snapshot.door_sensor_state = DeviceState.FAULT
+                if "door_sensor_timeout" not in self._snapshot.faults:
+                    self._snapshot.faults.append("door_sensor_timeout")
+                self._machine_status_service.block_sales("device_fault:door")
 
         if self._temperature_sensor is not None:
             try:
@@ -133,6 +143,12 @@ class HealthMonitor:
                     )
                 else:
                     self._machine_status_service.unblock_sales("critical_temperature")
+                self._snapshot.temperature_sensor_state = DeviceState.READY
             except asyncio.TimeoutError:
-                pass
+                # Mark sensor fault and block sales if reading hangs.
+                self._snapshot.temperature_sensor_state = DeviceState.FAULT
+                if "temperature_sensor_timeout" not in self._snapshot.faults:
+                    self._snapshot.faults.append("temperature_sensor_timeout")
+                self._machine_status_service.block_sales("device_fault:temperature")
+
         return self._snapshot
