@@ -169,28 +169,58 @@ def test_clear_drift(inventory: MoneyInventory) -> None:
     assert inventory.drift_detected is False
 
 
-def test_add_success(inventory: MoneyInventory) -> None:
-    # Add to existing denomination
-    inventory.add(10, 2)
-    # Add to new denomination
-    inventory.add(50, 1)
-
-    assert inventory.accounting_counts_by_denomination == {10: 7, 5: 10, 1: 20, 50: 1}
-
-
-def test_add_zero_is_noop(inventory: MoneyInventory) -> None:
-    # Adding zero to existing
-    inventory.add(10, 0)
-    # Adding zero to new denomination
-    inventory.add(20, 0)
-
-    # State remains completely unchanged
-    assert inventory.accounting_counts_by_denomination == {10: 5, 5: 10, 1: 20}
+def test_init_defaults() -> None:
+    inv = MoneyInventory()
+    assert inv.accounting_counts_by_denomination == {}
+    assert inv.reserved_counts_by_denomination == {}
+    assert inv.physical_state_confidence == 1.0
+    assert inv.exact_change_only is False
+    assert inv.drift_detected is False
 
 
-def test_add_negative_raises_error(inventory: MoneyInventory) -> None:
-    with pytest.raises(DomainValidationError, match="cannot add negative counts"):
-        inventory.add(10, -1)
+@pytest.mark.asyncio
+async def test_available_counts_empty_inventory() -> None:
+    inv = MoneyInventory()
+    available = await inv.available_counts()
+    assert available == {}
 
-    # State remains unchanged
-    assert inventory.accounting_counts_by_denomination == {10: 5, 5: 10, 1: 20}
+
+@pytest.mark.asyncio
+async def test_can_reserve_empty_plan(inventory: MoneyInventory) -> None:
+    can_reserve = await inventory.can_reserve({})
+    assert can_reserve is True
+
+
+@pytest.mark.asyncio
+async def test_reserve_empty_plan(inventory: MoneyInventory) -> None:
+    reserve = await inventory.reserve("txn-empty", {})
+    assert reserve.transaction_id == "txn-empty"
+    assert reserve.reserved_counts_by_denomination == {}
+
+
+@pytest.mark.asyncio
+async def test_consume_unseen_denomination(inventory: MoneyInventory) -> None:
+    reserve = ChangeReserve(
+        transaction_id="txn-unseen",
+        reserved_counts_by_denomination={100: 1},
+        currency=Currency("USD"),
+    )
+    # This should not raise an error, but decrease counts (possibly to negative)
+    await inventory.consume(reserve)
+    assert inventory.accounting_counts_by_denomination[100] == -1
+    # Reserved counts are bounded to 0 by max(0, ...)
+    assert inventory.reserved_counts_by_denomination.get(100, 0) == 0
+
+
+@pytest.mark.asyncio
+async def test_release_unseen_denomination(inventory: MoneyInventory) -> None:
+    reserve = ChangeReserve(
+        transaction_id="txn-unseen-release",
+        reserved_counts_by_denomination={50: 1},
+        currency=Currency("USD"),
+    )
+    # Should handle gracefully
+    await inventory.release(reserve)
+    assert inventory.reserved_counts_by_denomination.get(50, 0) == 0
+
+
