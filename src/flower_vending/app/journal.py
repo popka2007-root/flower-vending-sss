@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import sqlite3
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Any, Iterator, Protocol, cast
 
 
 def _utc_now() -> datetime:
@@ -70,6 +72,11 @@ def outcome_idempotency_key(
 
 
 class ApplicationJournal(Protocol):
+    @contextmanager
+    def atomic_transaction(self) -> Iterator[sqlite3.Connection]:
+        """Provide an atomic transaction context for multi-step persistence."""
+        ...
+
     def record_intent(
         self,
         *,
@@ -105,6 +112,11 @@ class ApplicationJournal(Protocol):
 
 
 class NoopApplicationJournal:
+    @contextmanager
+    def atomic_transaction(self) -> Iterator[sqlite3.Connection]:
+        # Minimal dummy connection for no-op case
+        yield cast(sqlite3.Connection, None)
+
     def record_intent(
         self,
         *,

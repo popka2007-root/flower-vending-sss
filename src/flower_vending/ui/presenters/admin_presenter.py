@@ -8,11 +8,11 @@ from flower_vending.ui.viewmodels.screens import (
     AdminAnalyticsTabViewModel,
     AdminCatalogItemViewModel,
     AdminCatalogTabViewModel,
-    AdminOrderViewModel,
     AdminOrdersTabViewModel,
+    AdminOrderViewModel,
     AdminSettingsTabViewModel,
-    AdminWindowViewModel,
     AdminWindowsTabViewModel,
+    AdminWindowViewModel,
 )
 
 

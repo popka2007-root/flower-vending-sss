@@ -30,6 +30,17 @@ class ColorTokens:
     input_border: str = "#D1D5DB"
     input_bg: str = "#FFFFFF"
     ring: str = "#EF7D00"
+    success: str = "#16A34A"
+    warning: str = "#CA8A04"
+    error: str = "#DC2626"
+    info: str = "#2563EB"
+    chart_1: str = "#8B5CF6"
+    chart_2: str = "#EC4899"
+    chart_3: str = "#06B6D4"
+    chart_grid: str = "#F0F0F0"
+    chart_text: str = "#9CA3AF"
+    processing_dot: str = "#D8CEC0"
+    processing_active: str = "#8B1D3B"
 
 
 LIGHT_TOKENS = ColorTokens()
@@ -57,6 +68,9 @@ class DarkColorTokens(ColorTokens):
     input_bg: str = "#2A2422"
     input_border: str = "#4A4A4A"
     ring: str = "#EF7D00"
+    chart_grid: str = "#4A4A4A"
+    chart_text: str = "#B0A8A4"
+    processing_active: str = "#EF7D00"
 
 
 DARK_TOKENS = DarkColorTokens()

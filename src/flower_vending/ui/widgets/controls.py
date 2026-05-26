@@ -17,8 +17,8 @@ from PySide6.QtGui import (
     QBrush,
     QColor,
     QMouseEvent,
-    QPaintEvent,
     QPainter,
+    QPaintEvent,
     QPixmap,
     QResizeEvent,
     QTouchEvent,
@@ -37,7 +37,6 @@ from PySide6.QtWidgets import (
 )
 
 from flower_vending.ui.viewmodels import BannerViewModel, CatalogItemViewModel
-
 
 _TAP_DEBOUNCE_MS = 500.0
 

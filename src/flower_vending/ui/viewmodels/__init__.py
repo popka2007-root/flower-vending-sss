@@ -2,6 +2,14 @@
 
 from flower_vending.ui.viewmodels.common import ActionButtonViewModel, BannerTone, BannerViewModel
 from flower_vending.ui.viewmodels.screens import (
+    AdminAnalyticsTabViewModel,
+    AdminCatalogItemViewModel,
+    AdminCatalogTabViewModel,
+    AdminOrdersTabViewModel,
+    AdminOrderViewModel,
+    AdminSettingsTabViewModel,
+    AdminWindowsTabViewModel,
+    AdminWindowViewModel,
     CatalogCategoryViewModel,
     CatalogItemViewModel,
     CatalogScreenViewModel,
@@ -12,14 +20,6 @@ from flower_vending.ui.viewmodels.screens import (
     ProductDetailsScreenViewModel,
     ServiceScreenViewModel,
     StatusScreenViewModel,
-    AdminAnalyticsTabViewModel,
-    AdminCatalogItemViewModel,
-    AdminCatalogTabViewModel,
-    AdminOrderViewModel,
-    AdminOrdersTabViewModel,
-    AdminSettingsTabViewModel,
-    AdminWindowViewModel,
-    AdminWindowsTabViewModel,
 )
 
 __all__ = [

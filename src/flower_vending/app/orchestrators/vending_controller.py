@@ -62,21 +62,23 @@ class VendingController(JournalingMixin):
                     f"inventory sensor mismatch for slot {command.slot_id}: "
                     f"has_product={presence.has_product}, confidence={presence.confidence}"
                 )
-        transaction = self._transaction_coordinator.create_transaction(
-            correlation_id=command.correlation_id,
-            product_id=command.product_id,
-            slot_id=command.slot_id,
-            price_minor_units=command.price_minor_units,
-            currency=command.currency,
-        )
-        self._machine_status_service.set_active_transaction(transaction.transaction_id.value)
-        self._fsm.transition(MachineState.PRODUCT_SELECTED, "product_selected")
+        with self._journal.atomic_transaction():
+            transaction = self._transaction_coordinator.create_transaction(
+                correlation_id=command.correlation_id,
+                product_id=command.product_id,
+                slot_id=command.slot_id,
+                price_minor_units=command.price_minor_units,
+                currency=command.currency,
+            )
+            self._machine_status_service.set_active_transaction(transaction.transaction_id.value)
+            self._fsm.transition(MachineState.PRODUCT_SELECTED, "product_selected")
+            self._fsm.transition(MachineState.CHECKING_AVAILABILITY, "availability_check_requested")
+            self._machine_status_service.ensure_sales_allowed()
+            self._fsm.transition(MachineState.CHECKING_CHANGE, "change_check_requested")
+            self._fsm.transition(MachineState.WAITING_FOR_PAYMENT, "waiting_for_payment")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+
         await self._motor_controller.stop_motion()
-        self._fsm.transition(MachineState.CHECKING_AVAILABILITY, "availability_check_requested")
-        self._machine_status_service.ensure_sales_allowed()
-        self._fsm.transition(MachineState.CHECKING_CHANGE, "change_check_requested")
-        self._fsm.transition(MachineState.WAITING_FOR_PAYMENT, "waiting_for_payment")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
         await self._event_bus.publish(
             payment_event(
                 "purchase_started",
@@ -97,24 +99,26 @@ class VendingController(JournalingMixin):
         return transaction.transaction_id.value
 
     async def cancel_purchase(self, command: CancelPurchase) -> str:
-        transaction = await self._payment_coordinator.cancel_purchase(
-            transaction_id=command.transaction_id,
-            correlation_id=command.correlation_id,
-        )
-        self._fsm.force_state(MachineState.IDLE, "transaction_cancelled")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
+        with self._journal.atomic_transaction():
+            transaction = await self._payment_coordinator.cancel_purchase(
+                transaction_id=command.transaction_id,
+                correlation_id=command.correlation_id,
+            )
+            self._fsm.force_state(MachineState.IDLE, "transaction_cancelled")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
         return transaction.transaction_id.value
 
     async def confirm_pickup(self, command: ConfirmPickup) -> str:
         transaction = self._transaction_coordinator.require(command.transaction_id)
-        transaction.confirm_pickup()
-        self._fsm.transition(MachineState.CLOSING_DELIVERY_WINDOW, "pickup_confirmed")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
-        self._record_intent(
-            transaction,
-            action_name="window_close_requested",
-            logical_step="confirm_pickup.close_window",
-        )
+        with self._journal.atomic_transaction():
+            transaction.confirm_pickup()
+            self._fsm.transition(MachineState.CLOSING_DELIVERY_WINDOW, "pickup_confirmed")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+            self._record_intent(
+                transaction,
+                action_name="window_close_requested",
+                logical_step="confirm_pickup.close_window",
+            )
         try:
             await self._window_controller.close_window(correlation_id=command.correlation_id)
         except Exception as exc:
@@ -127,14 +131,20 @@ class VendingController(JournalingMixin):
                 error=exc.__class__.__name__,
             )
             raise
-        self._record_outcome(
-            transaction,
-            action_name="window_close_requested",
-            logical_step="confirm_pickup.close_window",
-            outcome=JournalOutcome.SUCCEEDED,
-        )
-        transaction.mark_window_closed()
-        self._fsm.transition(MachineState.COMPLETED, "delivery_window_closed")
+        with self._journal.atomic_transaction():
+            self._record_outcome(
+                transaction,
+                action_name="window_close_requested",
+                logical_step="confirm_pickup.close_window",
+                outcome=JournalOutcome.SUCCEEDED,
+            )
+            transaction.mark_window_closed()
+            self._fsm.transition(MachineState.COMPLETED, "delivery_window_closed")
+            self._transaction_coordinator.clear_active(transaction.transaction_id.value)
+            self._machine_status_service.set_active_transaction(None)
+            self._fsm.transition(MachineState.IDLE, "ready_for_next_sale")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+
         await self._event_bus.publish(
             vending_event(
                 "pickup_confirmed",
@@ -151,19 +161,22 @@ class VendingController(JournalingMixin):
                 slot_id=transaction.slot_id.value,
             )
         )
-        self._transaction_coordinator.clear_active(transaction.transaction_id.value)
-        self._machine_status_service.set_active_transaction(None)
-        self._fsm.transition(MachineState.IDLE, "ready_for_next_sale")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
         return transaction.transaction_id.value
 
     async def handle_vend_authorized(self, event: DomainEvent) -> None:
         if event.transaction_id is None:
             return
         transaction = self._transaction_coordinator.require(event.transaction_id)
-        transaction.authorize_vend()
-        self._fsm.transition(MachineState.DISPENSING_PRODUCT, "vend_authorized")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
+        with self._journal.atomic_transaction():
+            transaction.authorize_vend()
+            self._fsm.transition(MachineState.DISPENSING_PRODUCT, "vend_authorized")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+            self._record_intent(
+                transaction,
+                action_name="motor_vend_requested",
+                logical_step="handle_vend_authorized.vend_motor",
+                slot_id=transaction.slot_id.value,
+            )
         await self._event_bus.publish(
             vending_event(
                 "product_dispense_requested",
@@ -171,12 +184,6 @@ class VendingController(JournalingMixin):
                 transaction_id=transaction.transaction_id.value,
                 slot_id=transaction.slot_id.value,
             )
-        )
-        self._record_intent(
-            transaction,
-            action_name="motor_vend_requested",
-            logical_step="handle_vend_authorized.vend_motor",
-            slot_id=transaction.slot_id.value,
         )
         try:
             await self._motor_controller.stop_motion()
@@ -202,28 +209,37 @@ class VendingController(JournalingMixin):
                               transaction_id=transaction.transaction_id.value, faults=["motor_fault"])
             )
             raise
-        self._record_outcome(
-            transaction,
-            action_name="motor_vend_requested",
-            logical_step="handle_vend_authorized.vend_motor",
-            outcome=JournalOutcome.SUCCEEDED,
-            slot_id=transaction.slot_id.value,
-        )
-        self._record_intent(
-            transaction,
-            action_name="inventory_decrement",
-            logical_step="handle_vend_authorized.mark_vended",
-            slot_id=transaction.slot_id.value,
-        )
-        self._inventory_service.mark_vended(transaction.slot_id.value)
-        self._record_outcome(
-            transaction,
-            action_name="inventory_decrement",
-            logical_step="handle_vend_authorized.mark_vended",
-            outcome=JournalOutcome.SUCCEEDED,
-            slot_id=transaction.slot_id.value,
-        )
-        transaction.mark_product_dispensed()
+        with self._journal.atomic_transaction():
+            self._record_outcome(
+                transaction,
+                action_name="motor_vend_requested",
+                logical_step="handle_vend_authorized.vend_motor",
+                outcome=JournalOutcome.SUCCEEDED,
+                slot_id=transaction.slot_id.value,
+            )
+            self._record_intent(
+                transaction,
+                action_name="inventory_decrement",
+                logical_step="handle_vend_authorized.mark_vended",
+                slot_id=transaction.slot_id.value,
+            )
+            self._inventory_service.mark_vended(transaction.slot_id.value)
+            self._record_outcome(
+                transaction,
+                action_name="inventory_decrement",
+                logical_step="handle_vend_authorized.mark_vended",
+                outcome=JournalOutcome.SUCCEEDED,
+                slot_id=transaction.slot_id.value,
+            )
+            transaction.mark_product_dispensed()
+            self._fsm.transition(MachineState.OPENING_DELIVERY_WINDOW, "product_dispensed")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+            self._record_intent(
+                transaction,
+                action_name="window_open_requested",
+                logical_step="handle_vend_authorized.open_window",
+            )
+
         await self._event_bus.publish(
             vending_event(
                 "product_dispensed",
@@ -231,13 +247,6 @@ class VendingController(JournalingMixin):
                 transaction_id=transaction.transaction_id.value,
                 slot_id=transaction.slot_id.value,
             )
-        )
-        self._fsm.transition(MachineState.OPENING_DELIVERY_WINDOW, "product_dispensed")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
-        self._record_intent(
-            transaction,
-            action_name="window_open_requested",
-            logical_step="handle_vend_authorized.open_window",
         )
         try:
             await self._window_controller.open_window(correlation_id=transaction.correlation_id.value)
@@ -258,15 +267,17 @@ class VendingController(JournalingMixin):
                               transaction_id=transaction.transaction_id.value, faults=["delivery_window_fault"])
             )
             raise
-        self._record_outcome(
-            transaction,
-            action_name="window_open_requested",
-            logical_step="handle_vend_authorized.open_window",
-            outcome=JournalOutcome.SUCCEEDED,
-        )
-        transaction.mark_window_opened()
-        self._fsm.transition(MachineState.WAITING_FOR_CUSTOMER_PICKUP, "delivery_window_opened")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
+        with self._journal.atomic_transaction():
+            self._record_outcome(
+                transaction,
+                action_name="window_open_requested",
+                logical_step="handle_vend_authorized.open_window",
+                outcome=JournalOutcome.SUCCEEDED,
+            )
+            transaction.mark_window_opened()
+            self._fsm.transition(MachineState.WAITING_FOR_CUSTOMER_PICKUP, "delivery_window_opened")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+
         await self._event_bus.publish(
             vending_event(
                 "delivery_window_opened",

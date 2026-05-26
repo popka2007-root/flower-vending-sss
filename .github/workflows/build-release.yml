@@ -25,6 +25,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -54,10 +55,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-ui.txt pyinstaller
+      - name: Validate build environment
+        run: pyinstaller --version
       - name: Build portable exe
         run: python packaging/build_release.py windows-portable
       - name: Install Inno Setup
@@ -78,6 +82,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -92,6 +97,8 @@ jobs:
           chmod +x appimagetool.AppImage
           printf '#!/usr/bin/env bash\n"%s" --appimage-extract-and-run "$@"\n' "$PWD/appimagetool.AppImage" > appimagetool-wrapper.sh
           chmod +x appimagetool-wrapper.sh
+      - name: Validate build environment
+        run: pyinstaller --version
       - name: Build Linux artifacts
         run: python packaging/build_release.py linux-appimage --appimagetool ./appimagetool-wrapper.sh
       - name: Upload Linux artifacts
@@ -117,7 +124,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" release-artifacts/**/* \
+          gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
             --title "${GITHUB_REF_NAME}" \
-            --generate-notes
+            --generate-notes \
+            release-artifacts/windows-release/*.exe \
+            release-artifacts/linux-release/*.AppImage \
+            release-artifacts/linux-release/*.tar.gz

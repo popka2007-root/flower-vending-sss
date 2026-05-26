@@ -14,8 +14,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from flower_vending.ui.design_tokens import current_color_tokens
 from flower_vending.ui.widgets.controls import repolish
-
 
 _PHASE_INTERVAL_MS = 200
 _MESSAGE_ROTATE_MS = 4_000
@@ -62,9 +62,12 @@ class AnimatedProcessingWidget(QFrame):
         self._dots.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._dots.setSpacing(12)
         self._stage_labels: list[QLabel] = []
+        tokens = current_color_tokens()
         for _ in range(4):
             dot = QLabel("•")
-            dot.setStyleSheet("font-size: 10px; color: #d8cec0; background: transparent;")
+            dot.setStyleSheet(
+                f"font-size: 10px; color: {tokens.processing_dot}; background: transparent;"
+            )
             self._dots.addWidget(dot)
             self._stage_labels.append(dot)
         self._dots_container = QWidget()
@@ -106,10 +109,11 @@ class AnimatedProcessingWidget(QFrame):
         repolish(self._message_label)
 
     def set_stage(self, stage: int) -> None:
+        tokens = current_color_tokens()
         for i, label in enumerate(self._stage_labels):
             label.setStyleSheet(
                 f"font-size: {'16px' if i == stage else '10px'}; "
-                f"color: {'#8b1d3b' if i <= stage else '#d8cec0'}; "
+                f"color: {tokens.processing_active if i <= stage else tokens.processing_dot}; "
                 "background: transparent;"
             )
         self._progress.setValue(stage)

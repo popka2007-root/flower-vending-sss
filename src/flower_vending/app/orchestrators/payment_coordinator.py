@@ -42,31 +42,35 @@ class PaymentCoordinator(JournalingMixin):
         self._machine_status_service.ensure_sales_allowed()
         transaction = self._transaction_coordinator.require(transaction_id)
         assessment = await self._change_manager.assess_sale(transaction)
-        self._machine_status_service.set_exact_change_only(assessment.exact_change_only)
-        if not assessment.sale_supported:
-            raise ChangeUnavailableError("cash sale is unsafe because change cannot be guaranteed")
-        if assessment.plan:
-            reserve = await self._change_manager.reserve_for_transaction(
-                transaction_id=transaction.transaction_id.value,
-                plan=assessment.plan,
+
+        with self._journal.atomic_transaction():
+            self._machine_status_service.set_exact_change_only(assessment.exact_change_only)
+            if not assessment.sale_supported:
+                raise ChangeUnavailableError("cash sale is unsafe because change cannot be guaranteed")
+            if assessment.plan:
+                reserve = await self._change_manager.reserve_for_transaction(
+                    transaction_id=transaction.transaction_id.value,
+                    plan=assessment.plan,
+                )
+                transaction.attach_change_reserve(reserve)
+            session = PurchaseTransactionAggregate(transaction).start_cash_session()
+            self._fsm.transition(MachineState.ACCEPTING_CASH, "cash_session_started")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+            self._record_intent(
+                transaction,
+                action_name="acceptance_enable_requested",
+                logical_step="start_cash_session.enable_acceptance",
             )
-            transaction.attach_change_reserve(reserve)
+
+        if assessment.plan and transaction.change_reserve:
             await self._event_bus.publish(
                 payment_event(
                     "change_reserve_created",
                     correlation_id=correlation_id,
                     transaction_id=transaction.transaction_id.value,
-                    reserved_minor_units=reserve.reserved_total.minor_units,
+                    reserved_minor_units=transaction.change_reserve.reserved_total.minor_units,
                 )
             )
-        session = PurchaseTransactionAggregate(transaction).start_cash_session()
-        self._fsm.transition(MachineState.ACCEPTING_CASH, "cash_session_started")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
-        self._record_intent(
-            transaction,
-            action_name="acceptance_enable_requested",
-            logical_step="start_cash_session.enable_acceptance",
-        )
         try:
             await self._validator.enable_acceptance(correlation_id=correlation_id)
         except Exception as exc:
@@ -142,12 +146,13 @@ class PaymentCoordinator(JournalingMixin):
 
     async def complete_payment(self, transaction_id: str) -> Transaction:
         transaction = self._transaction_coordinator.require(transaction_id)
-        transaction.confirm_payment()
-        self._record_intent(
-            transaction,
-            action_name="acceptance_disable_requested",
-            logical_step="complete_payment.disable_acceptance",
-        )
+        with self._journal.atomic_transaction():
+            transaction.confirm_payment()
+            self._record_intent(
+                transaction,
+                action_name="acceptance_disable_requested",
+                logical_step="complete_payment.disable_acceptance",
+            )
         try:
             await self._validator.disable_acceptance(correlation_id=transaction.correlation_id.value)
         except Exception as exc:
@@ -161,14 +166,15 @@ class PaymentCoordinator(JournalingMixin):
                 error=exc.__class__.__name__,
             )
             raise
-        self._record_outcome(
-            transaction,
-            action_name="acceptance_disable_requested",
-            logical_step="complete_payment.disable_acceptance",
-            outcome=JournalOutcome.SUCCEEDED,
-        )
-        self._fsm.transition(MachineState.PAYMENT_ACCEPTED, "payment_accepted")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
+        with self._journal.atomic_transaction():
+            self._record_outcome(
+                transaction,
+                action_name="acceptance_disable_requested",
+                logical_step="complete_payment.disable_acceptance",
+                outcome=JournalOutcome.SUCCEEDED,
+            )
+            self._fsm.transition(MachineState.PAYMENT_ACCEPTED, "payment_accepted")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
         refund_dispensed = False
         try:
             await self._change_manager.finalize_reserve(transaction)
@@ -272,11 +278,12 @@ class PaymentCoordinator(JournalingMixin):
 
     async def cancel_purchase(self, transaction_id: str, correlation_id: str) -> Transaction:
         transaction = self._transaction_coordinator.require(transaction_id)
-        self._record_intent(
-            transaction,
-            action_name="acceptance_disable_requested",
-            logical_step="cancel_purchase.disable_acceptance",
-        )
+        with self._journal.atomic_transaction():
+            self._record_intent(
+                transaction,
+                action_name="acceptance_disable_requested",
+                logical_step="cancel_purchase.disable_acceptance",
+            )
         try:
             await self._validator.disable_acceptance(correlation_id=correlation_id)
         except Exception as exc:
@@ -290,12 +297,13 @@ class PaymentCoordinator(JournalingMixin):
                 error=exc.__class__.__name__,
             )
             raise
-        self._record_outcome(
-            transaction,
-            action_name="acceptance_disable_requested",
-            logical_step="cancel_purchase.disable_acceptance",
-            outcome=JournalOutcome.SUCCEEDED,
-        )
+        with self._journal.atomic_transaction():
+            self._record_outcome(
+                transaction,
+                action_name="acceptance_disable_requested",
+                logical_step="cancel_purchase.disable_acceptance",
+                outcome=JournalOutcome.SUCCEEDED,
+            )
         if (
             transaction.payment_status is not PaymentStatus.CONFIRMED
             and transaction.accepted_amount.minor_units > 0
@@ -304,9 +312,12 @@ class PaymentCoordinator(JournalingMixin):
         if transaction.change_reserve is not None:
             await self._change_manager.inventory.release(transaction.change_reserve)
             transaction.change_reserve = None
-        transaction.cancel()
-        self._fsm.transition(MachineState.CANCELLED, "purchase_cancelled")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
+        with self._journal.atomic_transaction():
+            transaction.cancel()
+            self._fsm.transition(MachineState.CANCELLED, "purchase_cancelled")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+            self._transaction_coordinator.clear_active(transaction_id)
+            self._machine_status_service.set_active_transaction(None)
         await self._event_bus.publish(
             payment_event(
                 "transaction_cancelled",

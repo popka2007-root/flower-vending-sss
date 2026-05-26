@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from flower_vending.ui.widgets.modern import GradientButton, AnimatedCheckLabel
+from flower_vending.ui.widgets.modern import AnimatedCheckLabel, GradientButton
 
 
 class ThankYouScreenWidget(QWidget):
