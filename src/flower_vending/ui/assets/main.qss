@@ -1,0 +1,577 @@
+QWidget {{
+    background: {background};
+    color: {foreground};
+    font-family: {font_family};
+    font-size: {base_size}px;
+    font-weight: {weight_normal};
+}}
+
+QMainWindow {{
+    background: {background};
+}}
+
+QScrollArea {{
+    background: transparent;
+    border: none;
+}}
+
+QScrollArea > QWidget > QWidget {{
+    background: transparent;
+}}
+
+QLabel {{
+    background: transparent;
+}}
+
+QFrame {{
+    border: none;
+}}
+
+QAbstractButton:focus,
+QPushButton:focus,
+QCheckBox:focus,
+QLineEdit:focus {{
+    outline: none;
+}}
+
+QScrollBar:vertical {{
+    background: transparent;
+    width: 8px;
+    margin: 8px 0 8px 0;
+}}
+
+QScrollBar::handle:vertical {{
+    background: {muted};
+    border-radius: {radius_sm}px;
+    min-height: 48px;
+}}
+
+QScrollBar::handle:vertical:hover {{
+    background: {muted_foreground};
+}}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical,
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {{
+    background: transparent;
+    border: none;
+    height: 0;
+}}
+
+QScrollBar:horizontal {{
+    background: transparent;
+    height: 8px;
+    margin: 0 8px 0 8px;
+}}
+
+QScrollBar::handle:horizontal {{
+    background: {muted};
+    border-radius: {radius_sm}px;
+    min-width: 48px;
+}}
+
+QScrollBar::handle:horizontal:hover {{
+    background: {muted_foreground};
+}}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal,
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {{
+    background: transparent;
+    border: none;
+    width: 0;
+}}
+
+/* ---- Modern Gradient Button ---- */
+QPushButton#PrimaryButton {{
+    min-height: 56px;
+    padding: 12px 28px;
+    border: none;
+    border-radius: 28px;
+    background-color: {primary};
+    color: #FFFFFF;
+    font-size: 18px;
+    font-weight: {weight_bold};
+    margin: 0px;
+}}
+
+QPushButton#PrimaryButton:hover {{
+    background-color: {primary_hover};
+}}
+
+QPushButton#PrimaryButton:pressed {{
+    margin: 2px -2px -2px 2px;
+}}
+
+QPushButton#PrimaryButton:disabled {{
+    background: {muted};
+    color: {muted_foreground};
+}}
+
+QPushButton#PrimaryButton[compact="true"] {{
+    min-height: 44px;
+    padding: 8px 18px;
+    font-size: 15px;
+}}
+
+/* ---- Secondary Outline Button ---- */
+QPushButton#SecondaryButton {{
+    min-height: 56px;
+    padding: 12px 28px;
+    border: 2px solid {chart_2};
+    border-radius: {radius_xl}px;
+    background: transparent;
+    color: {chart_2};
+    font-size: 18px;
+    font-weight: {weight_semibold};
+}}
+
+QPushButton#SecondaryButton:hover {{
+    background: {chart_2_alpha_08};
+}}
+
+QPushButton#SecondaryButton:pressed {{
+    background: {chart_2_alpha_15};
+}}
+
+QPushButton#SecondaryButton[compact="true"] {{
+    min-height: 44px;
+    padding: 8px 18px;
+    font-size: 15px;
+}}
+
+/* ---- Ghost/Tertiary Button ---- */
+QPushButton#GhostButton {{
+    min-height: 44px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: {radius_md}px;
+    background: transparent;
+    color: {muted_foreground};
+    font-size: 15px;
+    font-weight: {weight_medium};
+}}
+
+QPushButton#GhostButton:hover {{
+    background: {accent};
+    color: {accent_foreground};
+}}
+
+/* ---- Chip / Pill Button ---- */
+QPushButton#ChipButton {{
+    min-height: 40px;
+    max-height: 44px;
+    padding: 6px 16px;
+    border: none;
+    border-radius: {radius_full}px;
+    background: transparent;
+    color: {muted_foreground};
+    font-size: 14px;
+    font-weight: {weight_medium};
+}}
+
+QPushButton#ChipButton:hover {{
+    background: {accent};
+}}
+
+QPushButton#ChipButton:checked {{
+    background: {chart_1};
+    color: #FFFFFF;
+}}
+
+QPushButton#ChipButton[pressed="true"] {{
+    background: {chart_1};
+    color: #FFFFFF;
+}}
+
+/* ---- Icon Button ---- */
+QPushButton#IconButton {{
+    min-width: 44px;
+    min-height: 44px;
+    max-width: 44px;
+    max-height: 44px;
+    border-radius: {radius_md}px;
+    border: none;
+    background: transparent;
+    padding: 0;
+}}
+
+QPushButton#IconButton:hover {{
+    background: {accent};
+}}
+
+/* ---- Money / Denomination Button ---- */
+QPushButton#MoneyButton {{
+    min-height: 52px;
+    padding: 10px 20px;
+    border: 2px solid {secondary};
+    border-radius: 26px;
+    background: #FFFFFF;
+    color: {primary};
+    font-size: 17px;
+    font-weight: {weight_bold};
+}}
+
+QPushButton#MoneyButton:hover {{
+    background: {secondary};
+    border-color: {primary};
+}}
+
+QPushButton#MoneyButton:pressed {{
+    margin: 2px -2px -2px 2px;
+}}
+
+/* ---- Destructive/Danger Button ---- */
+QPushButton#DangerButton {{
+    min-height: 48px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: {radius_md}px;
+    background: {destructive};
+    color: {destructive_foreground};
+    font-size: 16px;
+    font-weight: {weight_semibold};
+}}
+
+QPushButton#DangerButton:hover {{
+    background: {destructive_hover};
+}}
+
+/* ==========================
+   CARDS & CONTAINERS
+   ========================== */
+
+QFrame#Card {{
+    background: {card};
+    border-radius: 24px;
+}}
+
+QFrame#KPICard {{
+    background: #FFFFFF;
+    border-radius: 24px;
+    padding: 0;
+}}
+
+QFrame#ProductCard {{
+    background: #FFFFFF;
+    border-radius: 24px;
+    padding: 0;
+}}
+
+QFrame#ProductCard:hover {{
+    background: {product_card_hover};
+}}
+
+QFrame#Banner {{
+    border: none;
+    border-radius: {radius_lg}px;
+    padding: 14px 18px;
+}}
+
+QFrame#Banner[tone="info"] {{
+    background: {gray_100};
+}}
+
+QFrame#Banner[tone="success"] {{
+    background: {success_bg};
+}}
+
+QFrame#Banner[tone="warning"] {{
+    background: {warning_bg};
+}}
+
+QFrame#Banner[tone="error"] {{
+    background: {error_bg};
+}}
+
+QLabel#BannerTitle {{
+    font-size: 16px;
+    font-weight: {weight_bold};
+}}
+
+QLabel#BannerMessage {{
+    font-size: 14px;
+    color: {muted_foreground};
+}}
+
+/* ==========================
+   PRODUCT ELEMENTS
+   ========================== */
+
+QLabel#ProductPhoto {{
+    background: {accent};
+    border: none;
+    border-radius: {radius_xl}px;
+    color: {muted_foreground};
+    font-size: 16px;
+    font-weight: {weight_bold};
+}}
+
+QLabel#ProductTitle {{
+    font-size: 18px;
+    font-weight: {weight_bold};
+    color: {foreground};
+}}
+
+QLabel#ProductDescription {{
+    font-size: 14px;
+    color: {muted_foreground};
+}}
+
+QLabel#ProductPrice {{
+    font-size: 28px;
+    font-weight: {weight_light};
+    color: {foreground};
+}}
+
+QLabel#ProductCategory {{
+    font-size: 13px;
+    color: {muted_foreground};
+    font-weight: {weight_medium};
+}}
+
+QLabel#Badge {{
+    padding: 2px 10px;
+    border-radius: {radius_full}px;
+    font-size: 12px;
+    font-weight: {weight_semibold};
+}}
+
+QLabel#Badge[status="success"] {{
+    background: {success_bg};
+    color: {success};
+}}
+
+QLabel#Badge[status="warning"] {{
+    background: {warning_bg};
+    color: {warning};
+}}
+
+QLabel#Badge[status="error"] {{
+    background: {error_bg};
+    color: {error};
+}}
+
+QLabel#Badge[status="info"] {{
+    background: {info_bg};
+    color: {info_fg};
+}}
+
+/* ==========================
+   PANEL ELEMENTS
+   ========================== */
+
+QFrame#DetailsPanel {{
+    background: #FFFFFF;
+    border-radius: {radius_xl}px;
+}}
+
+QLabel#PanelCaption {{
+    color: {muted_foreground};
+    font-size: 13px;
+    font-weight: {weight_semibold};
+    text-transform: uppercase;
+}}
+
+/* ==========================
+   PAYMENT METRICS
+   ========================== */
+
+QFrame#MetricCard {{
+    background: {secondary};
+    border: none;
+    border-radius: 24px;
+}}
+
+QLabel#MetricCaption {{
+    color: {muted_foreground};
+    font-size: 14px;
+    font-weight: {weight_medium};
+}}
+
+QLabel#MetricValue {{
+    color: {primary};
+    font-size: 32px;
+    font-weight: {weight_bold};
+}}
+
+QLabel#MetricValue[accent="true"] {{
+    color: {primary};
+}}
+
+/* ==========================
+   HERO / HEADINGS
+   ========================== */
+
+QLabel#HeroTitle {{
+    font-size: 36px;
+    font-weight: {weight_black};
+    color: {foreground};
+}}
+
+QLabel#HeroSubtitle {{
+    font-size: 18px;
+    color: {muted_foreground};
+}}
+
+QLabel#Title {{
+    font-size: 28px;
+    font-weight: {weight_bold};
+}}
+
+QLabel#Subtitle {{
+    font-size: 18px;
+    color: {muted_foreground};
+}}
+
+QLabel#SectionTitle {{
+    font-size: 15px;
+    font-weight: {weight_semibold};
+    color: {muted_foreground};
+    text-transform: uppercase;
+}}
+
+QLabel#StatusMessage {{
+    font-size: 28px;
+    font-weight: {weight_bold};
+    color: {foreground};
+}}
+
+QLabel#HumanMessage {{
+    font-size: 16px;
+    color: {muted_foreground};
+    line-height: 1.5;
+}}
+
+/* ==========================
+   PROCESSING / DELIVERY
+   ========================== */
+
+QProgressBar {{
+    background: {muted};
+    border: none;
+    border-radius: 5px;
+    height: 8px;
+    text-align: center;
+    font-size: 0;
+}}
+
+QProgressBar::chunk {{
+    background: {chart_1};
+    border-radius: 5px;
+}}
+
+QLabel#ProcessingLabel {{
+    font-size: 20px;
+    font-weight: {weight_semibold};
+    color: {foreground};
+}}
+
+/* ==========================
+   THANK YOU SCREEN
+   ========================== */
+
+QWidget#ThankYouScreen {{
+    background: qlineargradient(x1:0 y1:0, x2:1 y2:1,
+        stop:0 {thank_you_stop_0}, stop:0.5 {thank_you_stop_1}, stop:1 {thank_you_stop_2});
+}}
+
+QLabel#ThankYouTitle {{
+    color: {foreground};
+    font-size: 40px;
+    font-weight: {weight_black};
+}}
+
+QLabel#ThankYouSubtitle {{
+    color: {muted_foreground};
+    font-size: 20px;
+}}
+
+/* ==========================
+   SERVICE / ADMIN
+   ========================== */
+
+QWidget#ServiceScreen {{
+    background: {gray_50};
+    color: {foreground};
+}}
+
+QGroupBox {{
+    background: #FFFFFF;
+    border: none;
+    border-radius: {radius_xl}px;
+    margin-top: 18px;
+    padding: 16px 12px 12px 12px;
+    font-size: 15px;
+    font-weight: {weight_semibold};
+    color: {foreground};
+}}
+
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 12px;
+    padding: 0 6px;
+    background: {gray_50};
+}}
+
+QCheckBox {{
+    color: {foreground};
+    font-size: 15px;
+    font-weight: {weight_medium};
+    spacing: 10px;
+}}
+
+QCheckBox::indicator {{
+    width: 22px;
+    height: 22px;
+}}
+
+/* ==========================
+   ADMIN PANEL
+   ========================== */
+
+QWidget#AdminSidebar {{
+    background: #1E1B4B;
+}}
+
+QWidget#AdminContent {{
+    background: {gray_50};
+}}
+
+/* ==========================
+   INPUTS & FORMS
+   ========================== */
+
+QLineEdit[class="adminInput"] {{
+    min-height: 42px;
+    padding: 8px 12px;
+    border: 1px solid {input_border};
+    border-radius: {radius_xl}px;
+    background: {input_bg};
+    color: {foreground};
+    font-size: 14px;
+    selection-background-color: {chart_1};
+}}
+
+QLineEdit[class="adminInput"]:focus {{
+    border-color: {chart_1};
+}}
+
+/* ==========================
+   TRANSITIONS / STATES
+   ========================== */
+
+QFrame[selected="true"] {{
+    background: {selected_bg};
+}}
+
+QFrame[available="false"] {{
+    opacity: 0.5;
+}}
+
+QWidget[danger="true"] {{
+    color: {destructive};
+}}

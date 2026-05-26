@@ -15,21 +15,20 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget
 from flower_vending.ui.navigation import ScreenId
 from flower_vending.ui.presenters import KioskPresenter, ScreenRender
 from flower_vending.ui.theme import current_stylesheet
-
+from flower_vending.ui.views.admin.admin_shell import AdminShell
+from flower_vending.ui.views.admin.analytics_tab import AnalyticsTab
+from flower_vending.ui.views.admin.catalog_tab import CatalogTab
+from flower_vending.ui.views.admin.orders_tab import OrdersTab
+from flower_vending.ui.views.admin.settings_tab import SettingsTab
+from flower_vending.ui.views.admin.windows_tab import WindowsTab
 from flower_vending.ui.views.catalog_screen import CatalogScreenWidget
 from flower_vending.ui.views.checkout_flow import CheckoutFlow
 from flower_vending.ui.views.delivery_screen import DeliveryScreenWidget
-from flower_vending.ui.views.status_screen import StatusScreenWidget
-from flower_vending.ui.views.service_screen import ServiceScreenWidget
 from flower_vending.ui.views.diagnostics_screen import DiagnosticsScreenWidget
 from flower_vending.ui.views.pin_screen import PinScreenWidget
+from flower_vending.ui.views.service_screen import ServiceScreenWidget
+from flower_vending.ui.views.status_screen import StatusScreenWidget
 from flower_vending.ui.views.thank_you_screen import ThankYouScreenWidget
-from flower_vending.ui.views.admin.admin_shell import AdminShell
-from flower_vending.ui.views.admin.orders_tab import OrdersTab
-from flower_vending.ui.views.admin.analytics_tab import AnalyticsTab
-from flower_vending.ui.views.admin.catalog_tab import CatalogTab
-from flower_vending.ui.views.admin.windows_tab import WindowsTab
-from flower_vending.ui.views.admin.settings_tab import SettingsTab
 
 logger = logging.getLogger("flower_vending.ui.window")
 

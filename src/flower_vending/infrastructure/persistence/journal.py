@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass, field
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Any
+from typing import Any, Iterator
 
 from flower_vending.app.journal import (
     ApplicationJournalRecord,
@@ -48,6 +49,11 @@ class SQLiteTransactionJournal:
 
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
+
+    @contextmanager
+    def atomic_transaction(self) -> Iterator[sqlite3.Connection]:
+        with self._database.transaction() as conn:
+            yield conn
 
     def append_entry(
         self,

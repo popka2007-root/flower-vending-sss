@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 
 from flower_vending.ui.design_tokens import BrandColors, Radius, Typography
 from flower_vending.ui.icons import IconName, icon
-from flower_vending.ui.viewmodels.screens import AdminCatalogTabViewModel, AdminCatalogItemViewModel
+from flower_vending.ui.viewmodels.screens import AdminCatalogItemViewModel, AdminCatalogTabViewModel
 from flower_vending.ui.widgets.modern import ToggleSwitch
 
 

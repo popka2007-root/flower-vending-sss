@@ -34,12 +34,13 @@ from PySide6.QtWidgets import (
 )
 
 from flower_vending.ui.design_tokens import (
+    DARK_TOKENS,
     BrandColors,
     Radius,
     Typography,
+    current_color_tokens,
 )
 from flower_vending.ui.icons import IconName, icon
-
 
 _SPACING_UNIT = 4
 
@@ -531,7 +532,8 @@ class ToggleSwitch(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        track_color = QColor("#9333EA") if self._checked else QColor("#D1D5DB")
+        tokens = current_color_tokens()
+        track_color = QColor(tokens.chart_1) if self._checked else QColor(tokens.input_border)
         p.setBrush(track_color)
         p.setPen(Qt.PenStyle.NoPen)
         p.drawRoundedRect(0, 0, 44, 24, 12, 12)
@@ -577,12 +579,13 @@ class WindowStatusCard(QFrame):
         self.setMinimumHeight(140)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
+        tokens = current_color_tokens()
         color_map = {
-            "free": BrandColors.GREEN_600,
-            "busy": "#CA8A04",
-            "maintenance": BrandColors.RED_600,
+            "free": tokens.success,
+            "busy": tokens.warning,
+            "maintenance": tokens.error,
         }
-        border_color = color_map.get(status, BrandColors.RED_600)
+        border_color = color_map.get(status, tokens.error)
         self.setStyleSheet(f"QFrame#Card {{ border-left: 4px solid {border_color}; }}")
 
         layout = QHBoxLayout(self)
@@ -623,19 +626,21 @@ class WindowStatusCard(QFrame):
         actions.setSpacing(6)
         free_btn = QPushButton("Освободить")
         free_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        success_hover = "#15803D" if tokens.success == "#16A34A" else tokens.success
         free_btn.setStyleSheet(
             f"QPushButton {{ padding: 6px 14px; border-radius: {Radius.MD}px; "
-            f"border: none; background: {BrandColors.GREEN_600}; color: #FFFFFF; font-size: 13px; }}"
-            f"QPushButton:hover {{ background: #15803D; }}"
+            f"border: none; background: {tokens.success}; color: #FFFFFF; font-size: 13px; }}"
+            f"QPushButton:hover {{ background: {success_hover}; }}"
         )
         free_btn.clicked.connect(lambda: self.action_requested.emit(f"window_free:{window_id}"))
         actions.addWidget(free_btn)
 
         maint_btn = QPushButton("Сервис" if status != "maintenance" else "Вернуть")
         maint_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        maint_bg = tokens.error if status != "maintenance" else tokens.chart_1
         maint_btn.setStyleSheet(
             f"QPushButton {{ padding: 6px 14px; border-radius: {Radius.MD}px; "
-            f"border: none; background: {BrandColors.RED_600 if status != 'maintenance' else BrandColors.PURPLE_600}; "
+            f"border: none; background: {maint_bg}; "
             f"color: #FFFFFF; font-size: 13px; }}"
         )
         maint_btn.clicked.connect(
@@ -647,12 +652,13 @@ class WindowStatusCard(QFrame):
 
     def set_status(self, status: str, detail: str = "") -> None:
         self._status = status
+        tokens = current_color_tokens()
         color_map = {
-            "free": BrandColors.GREEN_600,
-            "busy": "#CA8A04",
-            "maintenance": BrandColors.RED_600,
+            "free": tokens.success,
+            "busy": tokens.warning,
+            "maintenance": tokens.error,
         }
-        border_color = color_map.get(status, BrandColors.RED_600)
+        border_color = color_map.get(status, tokens.error)
         self.setStyleSheet(f"QFrame#Card {{ border-left: 4px solid {border_color}; }}")
         self._status_badge.setProperty(
             "status",
@@ -728,11 +734,15 @@ class AnimatedCheckLabel(QLabel):
         cy = self.height() // 2
         r = min(self.width(), self.height()) // 2 - 4
 
-        p.setBrush(QColor(BrandColors.GREEN_100))
+        tokens = current_color_tokens()
+        success_bg = (
+            BrandColors.GREEN_100 if tokens is not DARK_TOKENS else "rgba(22, 163, 74, 0.2)"
+        )
+        p.setBrush(QColor(success_bg))
         p.setPen(Qt.PenStyle.NoPen)
         p.drawEllipse(cx - r, cy - r, r * 2, r * 2)
 
-        pen = QPen(QColor(BrandColors.GREEN_600))
+        pen = QPen(QColor(tokens.success))
         pen.setWidth(4)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)

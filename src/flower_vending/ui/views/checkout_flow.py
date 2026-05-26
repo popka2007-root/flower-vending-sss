@@ -5,10 +5,14 @@ from __future__ import annotations
 import math
 import random
 
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QStackedWidget, QVBoxLayout, QWidget
 
+from flower_vending.ui.design_tokens import (
+    DARK_TOKENS,
+    current_color_tokens,
+)
 from flower_vending.ui.icons import IconName, icon
 
 G = "qlineargradient(x1:0 y1:0, x2:1 y2:0, stop:0 #EC4899, stop:1 #9333EA)"
@@ -137,7 +141,8 @@ class CheckoutFlow(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
-        self.setStyleSheet("background: #FFFFFF;")
+        tokens = current_color_tokens()
+        self.setStyleSheet(f"background: {tokens.background};")
 
         self._stack = QStackedWidget()
         root.addWidget(self._stack, 1)
@@ -152,6 +157,8 @@ class CheckoutFlow(QWidget):
 
     def _build_step_method(self) -> QWidget:
         w = QWidget()
+        tokens = current_color_tokens()
+        w.setStyleSheet(f"background: {tokens.background};")
         l = QVBoxLayout(w)
         l.setContentsMargins(0, 0, 0, 0)
         l.setSpacing(0)
@@ -182,8 +189,9 @@ class CheckoutFlow(QWidget):
         l.addWidget(header)
 
         self._order_card = QWidget()
-        self._order_card.setStyleSheet("background:#F9FAFB; border-radius:14px;")
+        card_bg = "#F9FAFB" if tokens is not DARK_TOKENS else "#332A26"
         self._order_card_layout = QVBoxLayout(self._order_card)
+        self._order_card.setStyleSheet(f"background:{card_bg}; border-radius:14px;")
         self._order_card_layout.setContentsMargins(
             _px(self, 5), _px(self, 4), _px(self, 5), _px(self, 4)
         )
@@ -214,7 +222,7 @@ class CheckoutFlow(QWidget):
             card = QWidget()
             card.setCursor(Qt.CursorShape.PointingHandCursor)
             card.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-            card.setStyleSheet("border: none; border-radius:14px; background:white;")
+            card.setStyleSheet(f"border: none; border-radius:14px; background:{tokens.card};")
             cl = QVBoxLayout(card)
             cl.setContentsMargins(_px(self, 3), _px(self, 3), _px(self, 3), _px(self, 3))
             cl.setSpacing(_px(self, 1))
@@ -304,14 +312,16 @@ class CheckoutFlow(QWidget):
         icon_wrap = QLabel()
         icon_wrap.setFixedSize(104, 104)
         icon_wrap.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_wrap.setStyleSheet("background: #DCFCE7; border-radius: 52px;")
-        icon_wrap.setPixmap(icon(IconName.CHECK_CIRCLE, 58, "#16A34A").pixmap(58, 58))
+        tokens = current_color_tokens()
+        success_bg = "#DCFCE7" if tokens is not DARK_TOKENS else "rgba(22, 163, 74, 0.2)"
+        icon_wrap.setStyleSheet(f"background: {success_bg}; border-radius: 52px;")
+        icon_wrap.setPixmap(icon(IconName.CHECK_CIRCLE, 58, tokens.success).pixmap(58, 58))
         l.addWidget(icon_wrap, 0, Qt.AlignmentFlag.AlignCenter)
 
         l.addSpacing(_px(self, 4))
         title = QLabel("Оплата прошла успешно!")
         title.setFont(_f(34, 800))
-        title.setStyleSheet("color:#1F2937;")
+        title.setStyleSheet(f"color:{tokens.foreground};")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         l.addWidget(title)
 
@@ -323,7 +333,8 @@ class CheckoutFlow(QWidget):
 
         l.addSpacing(_px(self, 3))
         self._window_card = QWidget()
-        self._window_card.setStyleSheet("background:#FDF2F8; border-radius:14px;")
+        window_bg = "#FDF2F8" if tokens is not DARK_TOKENS else tokens.secondary
+        self._window_card.setStyleSheet(f"background:{window_bg}; border-radius:14px;")
         self._window_card.setFixedWidth(360)
         wl = QVBoxLayout(self._window_card)
         wl.setContentsMargins(_px(self, 4), _px(self, 3), _px(self, 4), _px(self, 3))
@@ -365,11 +376,13 @@ class CheckoutFlow(QWidget):
 
     def _select_method(self, method: str) -> None:
         self._payment_method = method
+        tokens = current_color_tokens()
+        selected_bg = "#FDF2F8" if tokens is not DARK_TOKENS else tokens.secondary
         for mid, card in self._method_cards.items():
             if mid == method:
-                card.setStyleSheet("border: none; border-radius:14px; background:#FDF2F8;")
+                card.setStyleSheet(f"border: none; border-radius:14px; background:{selected_bg};")
             else:
-                card.setStyleSheet("border: none; border-radius:14px; background:white;")
+                card.setStyleSheet(f"border: none; border-radius:14px; background:{tokens.card};")
 
     def _go_to_processing(self) -> None:
         self.pay_confirmed.emit(self._payment_method)

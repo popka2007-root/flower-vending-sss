@@ -15,7 +15,6 @@ from flower_vending.ui.viewmodels import StatusScreenViewModel
 from flower_vending.ui.widgets.controls import BannerWidget
 from flower_vending.ui.widgets.modern import GradientButton, OutlineButton
 
-
 _PADDING = 48
 
 

@@ -17,7 +17,6 @@ from flower_vending.ui.icons import IconName, icon
 from flower_vending.ui.navigation import ScreenId
 from flower_vending.ui.widgets.modern import repolish
 
-
 NAV_ITEMS = [
     (ScreenId.ADMIN_ORDERS, "Заказы", IconName.PACKAGE),
     (ScreenId.ADMIN_ANALYTICS, "Аналитика", IconName.CHART_BAR),

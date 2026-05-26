@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from flower_vending.ui.design_tokens import BrandColors, Radius, Typography
-from flower_vending.ui.viewmodels import DiagnosticsScreenViewModel, DiagnosticsDeviceViewModel
+from flower_vending.ui.viewmodels import DiagnosticsDeviceViewModel, DiagnosticsScreenViewModel
 from flower_vending.ui.widgets.modern import GradientButton
 
 

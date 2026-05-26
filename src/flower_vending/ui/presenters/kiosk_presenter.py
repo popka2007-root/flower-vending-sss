@@ -16,6 +16,7 @@ from flower_vending.domain.exceptions import (
 )
 from flower_vending.ui.facade import CatalogEntry, MachineUiSnapshot, UiApplicationFacade
 from flower_vending.ui.navigation import NavigationState, ScreenId
+from flower_vending.ui.presenters.admin_presenter import AdminPresenter
 from flower_vending.ui.presenters.catalog_presenter import CatalogPresenter
 from flower_vending.ui.presenters.payment_presenter import PaymentPresenter
 from flower_vending.ui.presenters.service_presenter import (
@@ -24,10 +25,8 @@ from flower_vending.ui.presenters.service_presenter import (
     parse_product_toggle_action,
 )
 from flower_vending.ui.presenters.status_presenter import StatusPresenter
-from flower_vending.ui.presenters.admin_presenter import AdminPresenter
 from flower_vending.ui.session import KioskSessionState
 from flower_vending.ui.theme import ThemeName
-
 
 logger = logging.getLogger("flower_vending.ui")
 

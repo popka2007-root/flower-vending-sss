@@ -16,7 +16,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from flower_vending.ui.design_tokens import BrandColors
+from flower_vending.ui.design_tokens import (
+    DARK_TOKENS,
+    BrandColors,
+    current_color_tokens,
+)
 from flower_vending.ui.viewmodels.screens import (
     ActionButtonViewModel,
     ServiceActionGroupViewModel,
@@ -36,19 +40,23 @@ def _px(widget: QWidget, n: float) -> int:
 
 def _wrap_card(widget: QWidget, title: str, body: QWidget | None = None) -> QWidget:
     card = QWidget()
-    card.setStyleSheet("background: #FFFFFF; border: none; border-radius: 16px;")
+    tokens = current_color_tokens()
+    card.setStyleSheet(f"background: {tokens.card}; border: none; border-radius: 16px;")
     cl = QVBoxLayout(card)
     cl.setContentsMargins(0, 0, 0, 0)
     cl.setSpacing(0)
 
     head = QWidget()
     head.setFixedHeight(_px(widget, 12))  # Слегка увеличили высоту шапки карты
-    head.setStyleSheet("background: #F8FAFC; border-radius: 16px 16px 0 0;")
+    head_bg = "#F8FAFC" if tokens is not DARK_TOKENS else "#2A2422"
+    head.setStyleSheet(f"background: {head_bg}; border-radius: 16px 16px 0 0;")
     hl = QHBoxLayout(head)
     hl.setContentsMargins(_px(widget, 4), 0, _px(widget, 4), 0)
 
     t = QLabel(title.upper())
-    t.setStyleSheet("font-size: 14px; font-weight: 700; color: #64748B; letter-spacing: 0.5px;")
+    t.setStyleSheet(
+        f"font-size: 14px; font-weight: 700; color: {tokens.muted_foreground}; letter-spacing: 0.5px;"
+    )
     hl.addWidget(t)
     cl.addWidget(head)
 
@@ -96,12 +104,13 @@ class ServiceScreenWidget(QWidget):
         if not isinstance(model, ServiceScreenViewModel):
             return
         self._clear_layout(self._layout)
+        tokens = current_color_tokens()
 
         # Блок заголовков
         title = QLabel(model.title)
-        title.setStyleSheet("font-size: 44px; font-weight: 800; color: #0F172A;")
+        title.setStyleSheet(f"font-size: 44px; font-weight: 800; color: {tokens.foreground};")
         sub = QLabel(model.subtitle)
-        sub.setStyleSheet("font-size: 16px; color: #94A3B8;")
+        sub.setStyleSheet(f"font-size: 16px; color: {tokens.muted_foreground};")
         self._layout.addWidget(title)
         self._layout.addWidget(sub)
 
@@ -130,7 +139,8 @@ class ServiceScreenWidget(QWidget):
 
     def _build_tab_bar(self, tabs: tuple[ServiceTabViewModel, ...]) -> QWidget:
         bar = QWidget()
-        bar.setStyleSheet("background: #FFFFFF; border: none; border-radius: 14px;")
+        tokens = current_color_tokens()
+        bar.setStyleSheet(f"background: {tokens.card}; border: none; border-radius: 14px;")
         bl = QHBoxLayout(bar)
         bl.setContentsMargins(_px(self, 1.5), _px(self, 1.5), _px(self, 1.5), _px(self, 1.5))
         bl.setSpacing(_px(self, 1))
@@ -150,12 +160,14 @@ class ServiceScreenWidget(QWidget):
 
     def _switch_tab(self, index: int) -> None:
         # Добавлен :pressed эффект для неактивных вкладок
-        active_style = """
-            QPushButton { border-radius: 12px; font-size: 18px; font-weight: 700; padding: 0 14px; background: #9333EA; color: #FFFFFF; border: none; }
+        tokens = current_color_tokens()
+        active_style = f"""
+            QPushButton {{ border-radius: 12px; font-size: 18px; font-weight: 700; padding: 0 14px; background: {tokens.chart_1}; color: #FFFFFF; border: none; }}
         """
-        inactive_style = """
-            QPushButton { border-radius: 12px; font-size: 18px; font-weight: 700; padding: 0 14px; background: #F1F5F9; color: #64748B; border: none; }
-            QPushButton:pressed { background: #E2E8F0; }
+        inactive_bg = "#F1F5F9" if tokens is not DARK_TOKENS else "#2A2422"
+        inactive_style = f"""
+            QPushButton {{ border-radius: 12px; font-size: 18px; font-weight: 700; padding: 0 14px; background: {inactive_bg}; color: {tokens.muted_foreground}; border: none; }}
+            QPushButton:pressed {{ background: {tokens.secondary}; }}
         """
         for i, btn in enumerate(self._tab_buttons):
             btn.setStyleSheet(active_style if i == index else inactive_style)
@@ -190,19 +202,28 @@ class ServiceScreenWidget(QWidget):
         rl.setSpacing(_px(self, 3))
         k = model.kpi
         assert k is not None
+        tokens = current_color_tokens()
         stats = [
-            ("Состояние", k.machine_state, "#0EA5E9"),
-            ("Блокировки", str(k.blockers_count), "#EF4444" if k.blockers_count else "#16A34A"),
-            ("Транзакции", str(k.unresolved_count), "#EF4444" if k.unresolved_count else "#16A34A"),
+            ("Состояние", k.machine_state, tokens.info),
+            (
+                "Блокировки",
+                str(k.blockers_count),
+                tokens.error if k.blockers_count else tokens.success,
+            ),
+            (
+                "Транзакции",
+                str(k.unresolved_count),
+                tokens.error if k.unresolved_count else tokens.success,
+            ),
             (
                 "Устройства",
                 f"{k.devices_ok}/{k.devices_total}",
-                "#16A34A" if k.devices_ok == k.devices_total else "#D97706",
+                tokens.success if k.devices_ok == k.devices_total else tokens.warning,
             ),
         ]
         for cap, val, color in stats:
             card = QWidget()
-            card.setStyleSheet("background: #FFFFFF; border: none; border-radius: 14px;")
+            card.setStyleSheet(f"background: {tokens.card}; border: none; border-radius: 14px;")
             cl = QVBoxLayout(card)
             cl.setContentsMargins(_px(self, 4), _px(self, 3), _px(self, 4), _px(self, 3))
             v = QLabel(val)
@@ -216,11 +237,33 @@ class ServiceScreenWidget(QWidget):
 
     def _style_for_action(self, variant: str) -> tuple[str, str]:
         # Функция возвращает кортеж (базовый_стиль, стиль_при_нажатии)
+        tokens = current_color_tokens()
+        primary_hover = "#7E22CE" if tokens.chart_1 == "#8B5CF6" else tokens.chart_1
+        danger_hover = "#B91C1C" if tokens.error == "#DC2626" else tokens.error
+        warning_bg = "#FEF3C7" if tokens is not DARK_TOKENS else "rgba(202, 138, 4, 0.2)"
+        warning_fg = "#92400E" if tokens is not DARK_TOKENS else tokens.warning
+        warning_hover = "#FDE68A" if tokens is not DARK_TOKENS else "rgba(202, 138, 4, 0.3)"
+        default_bg = "#F1F5F9" if tokens is not DARK_TOKENS else "#2A2422"
+        default_fg = "#334155" if tokens is not DARK_TOKENS else tokens.foreground
+        default_hover = "#E2E8F0" if tokens is not DARK_TOKENS else tokens.secondary
+
         styles = {
-            "primary": ("background: #9333EA; color: #FFFFFF;", "background: #7E22CE;"),
-            "danger": ("background: #DC2626; color: #FFFFFF;", "background: #B91C1C;"),
-            "warning": ("background: #FEF3C7; color: #92400E;", "background: #FDE68A;"),
-            "default": ("background: #F1F5F9; color: #334155;", "background: #E2E8F0;"),
+            "primary": (
+                f"background: {tokens.chart_1}; color: #FFFFFF;",
+                f"background: {primary_hover};",
+            ),
+            "danger": (
+                f"background: {tokens.error}; color: #FFFFFF;",
+                f"background: {danger_hover};",
+            ),
+            "warning": (
+                f"background: {warning_bg}; color: {warning_fg};",
+                f"background: {warning_hover};",
+            ),
+            "default": (
+                f"background: {default_bg}; color: {default_fg};",
+                f"background: {default_hover};",
+            ),
         }
         return styles.get(variant, styles["default"])
 
@@ -279,15 +322,17 @@ class ServiceScreenWidget(QWidget):
         bl = QVBoxLayout(body)
         bl.setContentsMargins(0, 0, 0, 0)
         bl.setSpacing(_px(self, 1.5))
+        tokens = current_color_tokens()
+        row_bg = "#F8FAFC" if tokens is not DARK_TOKENS else "#2A2422"
         for act in toggles:
             row = QWidget()
-            row.setStyleSheet("background: #F8FAFC; border: none; border-radius: 12px;")
+            row.setStyleSheet(f"background: {row_bg}; border: none; border-radius: 12px;")
             rl = QHBoxLayout(row)
             # Увеличенные отступы внутри строк переключателей
             rl.setContentsMargins(_px(self, 4), _px(self, 3), _px(self, 4), _px(self, 3))
 
             lbl = QLabel(act.label)
-            lbl.setStyleSheet("font-size: 16px; font-weight: 500; color: #0F172A;")
+            lbl.setStyleSheet(f"font-size: 16px; font-weight: 500; color: {tokens.foreground};")
 
             sw = ToggleSwitch(act.enabled)
             aid = act.action_id

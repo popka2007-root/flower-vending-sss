@@ -104,17 +104,36 @@ class RecoveryManager:
 
     async def detect_unresolved_intents(self, correlation_id: str) -> tuple[RecoveryPlan, ...]:
         plans: list[RecoveryPlan] = []
-        for intent in self._journal.unresolved_intents():
-            plan = self._mark_unresolved_intent(intent)
-            if plan is None:
-                continue
-            plans.append(plan)
-            _logger.warning(
-                "unresolved_intent_detected action=%s transaction_id=%s classification=%s",
-                intent.entry_name,
-                plan.transaction_id,
-                plan.intent_classification,
-            )
+        unresolved_intents = self._journal.unresolved_intents()
+
+        with self._journal.atomic_transaction():
+            for intent in unresolved_intents:
+                plan = self._mark_unresolved_intent(intent)
+                if plan is None:
+                    continue
+                plans.append(plan)
+                _logger.warning(
+                    "unresolved_intent_detected action=%s transaction_id=%s classification=%s",
+                    intent.entry_name,
+                    plan.transaction_id,
+                    plan.intent_classification,
+                )
+
+            if plans:
+                if self._fsm.can_transition(MachineState.RECOVERY_PENDING):
+                    self._fsm.transition(
+                        MachineState.RECOVERY_PENDING, "unresolved_intent_recovery_required"
+                    )
+                else:
+                    self._fsm.force_state(
+                        MachineState.RECOVERY_PENDING, "unresolved_intent_recovery_required"
+                    )
+                self._machine_status_service.set_machine_state(self._fsm.current_state)
+                self._machine_status_service.block_sales("recovery_pending")
+
+        for plan in plans:
+            # Find the original intent record for metadata
+            intent = next((i for i in unresolved_intents if i.transaction_id == plan.transaction_id), None)
             await self._event_bus.publish(
                 machine_event(
                     "unresolved_intent_detected",
@@ -123,8 +142,8 @@ class RecoveryManager:
                     action=plan.action,
                     reason=plan.reason,
                     intent_classification=plan.intent_classification,
-                    intent_name=intent.entry_name,
-                    logical_step=intent.payload.get("logical_step"),
+                    intent_name=intent.entry_name if intent else "unknown",
+                    logical_step=intent.payload.get("logical_step") if intent else "unknown",
                 )
             )
             if plan.operator_required:
@@ -138,17 +157,6 @@ class RecoveryManager:
                         intent_classification=plan.intent_classification,
                     )
                 )
-        if plans:
-            if self._fsm.can_transition(MachineState.RECOVERY_PENDING):
-                self._fsm.transition(
-                    MachineState.RECOVERY_PENDING, "unresolved_intent_recovery_required"
-                )
-            else:
-                self._fsm.force_state(
-                    MachineState.RECOVERY_PENDING, "unresolved_intent_recovery_required"
-                )
-            self._machine_status_service.set_machine_state(self._fsm.current_state)
-            self._machine_status_service.block_sales("recovery_pending")
 
         orphaned = self._journal.orphaned_outcomes()
         for record in orphaned:
@@ -171,12 +179,15 @@ class RecoveryManager:
     async def recover_transaction(self, transaction_id: str, correlation_id: str) -> RecoveryPlan:
         transaction = self._transaction_coordinator.require(transaction_id)
         plan = self.assess(transaction)
-        if self._fsm.can_transition(MachineState.RECOVERY_PENDING):
-            self._fsm.transition(MachineState.RECOVERY_PENDING, "recovery_started")
-        else:
-            self._fsm.force_state(MachineState.RECOVERY_PENDING, "recovery_started_forced")
-        self._machine_status_service.set_machine_state(self._fsm.current_state)
-        self._machine_status_service.block_sales("recovery_pending")
+
+        with self._journal.atomic_transaction():
+            if self._fsm.can_transition(MachineState.RECOVERY_PENDING):
+                self._fsm.transition(MachineState.RECOVERY_PENDING, "recovery_started")
+            else:
+                self._fsm.force_state(MachineState.RECOVERY_PENDING, "recovery_started_forced")
+            self._machine_status_service.set_machine_state(self._fsm.current_state)
+            self._machine_status_service.block_sales("recovery_pending")
+
         await self._event_bus.publish(
             machine_event(
                 "recovery_started",
@@ -207,12 +218,14 @@ class RecoveryManager:
             )
             raise ManualInterventionRequiredError(plan.reason)
         if plan.action == "cancel_safe" or plan.intent_classification == "cancel_safe":
-            transaction.cancel()
-            self._transaction_coordinator.clear_active(transaction_id)
-            self._machine_status_service.set_active_transaction(None)
-            self._machine_status_service.unblock_sales("recovery_pending")
-            self._fsm.transition(MachineState.IDLE, "recovery_completed")
-            self._machine_status_service.set_machine_state(self._fsm.current_state)
+            with self._journal.atomic_transaction():
+                transaction.cancel()
+                self._transaction_coordinator.clear_active(transaction_id)
+                self._machine_status_service.set_active_transaction(None)
+                self._machine_status_service.unblock_sales("recovery_pending")
+                self._fsm.transition(MachineState.IDLE, "recovery_completed")
+                self._machine_status_service.set_machine_state(self._fsm.current_state)
+
             await self._event_bus.publish(
                 machine_event(
                     "recovery_completed",

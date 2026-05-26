@@ -2,603 +2,90 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal, cast
 
 from PySide6.QtWidgets import QApplication
 
 from flower_vending.ui.design_tokens import (
-    BrandColors,
-    ColorTokens,
     DARK_TOKENS,
     LIGHT_TOKENS,
+    BrandColors,
+    ColorTokens,
     Radius,
     Typography,
 )
 
 
 def _build_stylesheet(tokens: ColorTokens) -> str:
-    primary_gradient = f"background-color: {tokens.primary};"
-    primary_brighter = "background-color: #F08A1A;"
-
-    return f"""
-QWidget {{
-    background: {tokens.background};
-    color: {tokens.foreground};
-    font-family: {Typography.FONT_FAMILY};
-    font-size: {Typography.BASE_SIZE}px;
-    font-weight: {Typography.WEIGHTS["normal"]};
-}}
-
-QMainWindow {{
-    background: {tokens.background};
-}}
-
-QScrollArea {{
-    background: transparent;
-    border: none;
-}}
-
-QScrollArea > QWidget > QWidget {{
-    background: transparent;
-}}
-
-QLabel {{
-    background: transparent;
-}}
-
-QFrame {{
-    border: none;
-}}
-
-QAbstractButton:focus,
-QPushButton:focus,
-QCheckBox:focus,
-QLineEdit:focus {{
-    outline: none;
-}}
-
-QScrollBar:vertical {{
-    background: transparent;
-    width: 8px;
-    margin: 8px 0 8px 0;
-}}
-
-QScrollBar::handle:vertical {{
-    background: {tokens.muted};
-    border-radius: {Radius.SM}px;
-    min-height: 48px;
-}}
-
-QScrollBar::handle:vertical:hover {{
-    background: {tokens.muted_foreground};
-}}
-
-QScrollBar::add-line:vertical,
-QScrollBar::sub-line:vertical,
-QScrollBar::add-page:vertical,
-QScrollBar::sub-page:vertical {{
-    background: transparent;
-    border: none;
-    height: 0;
-}}
-
-QScrollBar:horizontal {{
-    background: transparent;
-    height: 8px;
-    margin: 0 8px 0 8px;
-}}
-
-QScrollBar::handle:horizontal {{
-    background: {tokens.muted};
-    border-radius: {Radius.SM}px;
-    min-width: 48px;
-}}
-
-QScrollBar::handle:horizontal:hover {{
-    background: {tokens.muted_foreground};
-}}
-
-QScrollBar::add-line:horizontal,
-QScrollBar::sub-line:horizontal,
-QScrollBar::add-page:horizontal,
-QScrollBar::sub-page:horizontal {{
-    background: transparent;
-    border: none;
-    width: 0;
-}}
-
-/* ---- Modern Gradient Button ---- */
-QPushButton#PrimaryButton {{
-    min-height: 56px;
-    padding: 12px 28px;
-    border: none;
-    border-radius: 28px;
-    {primary_gradient}
-    color: #FFFFFF;
-    font-size: 18px;
-    font-weight: {Typography.WEIGHTS["bold"]};
-    margin: 0px;
-}}
-
-QPushButton#PrimaryButton:hover {{
-    {primary_brighter}
-}}
-
-QPushButton#PrimaryButton:pressed {{
-    margin: 2px -2px -2px 2px;
-}}
-
-QPushButton#PrimaryButton:disabled {{
-    background: {tokens.muted};
-    color: {tokens.muted_foreground};
-}}
-
-QPushButton#PrimaryButton[compact="true"] {{
-    min-height: 44px;
-    padding: 8px 18px;
-    font-size: 15px;
-}}
-
-/* ---- Secondary Outline Button ---- */
-QPushButton#SecondaryButton {{
-    min-height: 56px;
-    padding: 12px 28px;
-    border: 2px solid #EC4899;
-    border-radius: {Radius.XL}px;
-    background: transparent;
-    color: #EC4899;
-    font-size: 18px;
-    font-weight: {Typography.WEIGHTS["semibold"]};
-}}
-
-QPushButton#SecondaryButton:hover {{
-    background: rgba(236, 72, 153, 0.08);
-}}
-
-QPushButton#SecondaryButton:pressed {{
-    background: rgba(236, 72, 153, 0.15);
-}}
-
-QPushButton#SecondaryButton[compact="true"] {{
-    min-height: 44px;
-    padding: 8px 18px;
-    font-size: 15px;
-}}
-
-/* ---- Ghost/Tertiary Button ---- */
-QPushButton#GhostButton {{
-    min-height: 44px;
-    padding: 8px 16px;
-    border: none;
-    border-radius: {Radius.MD}px;
-    background: transparent;
-    color: {tokens.muted_foreground};
-    font-size: 15px;
-    font-weight: {Typography.WEIGHTS["medium"]};
-}}
-
-QPushButton#GhostButton:hover {{
-    background: {tokens.accent};
-    color: {tokens.accent_foreground};
-}}
-
-/* ---- Chip / Pill Button ---- */
-QPushButton#ChipButton {{
-    min-height: 40px;
-    max-height: 44px;
-    padding: 6px 16px;
-    border: none;
-    border-radius: {Radius.FULL}px;
-    background: transparent;
-    color: {tokens.muted_foreground};
-    font-size: 14px;
-    font-weight: {Typography.WEIGHTS["medium"]};
-}}
-
-QPushButton#ChipButton:hover {{
-    background: {tokens.accent};
-}}
-
-QPushButton#ChipButton:checked {{
-    background: #9333EA;
-    color: #FFFFFF;
-}}
-
-QPushButton#ChipButton[pressed="true"] {{
-    background: #9333EA;
-    color: #FFFFFF;
-}}
-
-/* ---- Icon Button ---- */
-QPushButton#IconButton {{
-    min-width: 44px;
-    min-height: 44px;
-    max-width: 44px;
-    max-height: 44px;
-    border-radius: {Radius.MD}px;
-    border: none;
-    background: transparent;
-    padding: 0;
-}}
-
-QPushButton#IconButton:hover {{
-    background: {tokens.accent};
-}}
-
-/* ---- Money / Denomination Button ---- */
-QPushButton#MoneyButton {{
-    min-height: 52px;
-    padding: 10px 20px;
-    border: 2px solid {BrandColors.PURPLE_50};
-    border-radius: 26px;
-    background: #FFFFFF;
-    color: {tokens.primary};
-    font-size: 17px;
-    font-weight: {Typography.WEIGHTS["bold"]};
-}}
-
-QPushButton#MoneyButton:hover {{
-    background: {BrandColors.PURPLE_50};
-    border-color: {tokens.primary};
-}}
-
-QPushButton#MoneyButton:pressed {{
-    margin: 2px -2px -2px 2px;
-}}
-
-/* ---- Destructive/Danger Button ---- */
-QPushButton#DangerButton {{
-    min-height: 48px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: {Radius.MD}px;
-    background: {tokens.destructive};
-    color: {tokens.destructive_foreground};
-    font-size: 16px;
-    font-weight: {Typography.WEIGHTS["semibold"]};
-}}
-
-QPushButton#DangerButton:hover {{
-    background: #B31234;
-}}
-
-/* ==========================
-   CARDS & CONTAINERS
-   ========================== */
-
-QFrame#Card {{
-    background: {tokens.card};
-    border-radius: 24px;
-}}
-
-QFrame#KPICard {{
-    background: #FFFFFF;
-    border-radius: 24px;
-    padding: 0;
-}}
-
-QFrame#ProductCard {{
-    background: #FFFFFF;
-    border-radius: 24px;
-    padding: 0;
-}}
-
-QFrame#ProductCard:hover {{
-    background: #FDF2F8;
-}}
-
-QFrame#Banner {{
-    border: none;
-    border-radius: {Radius.LG}px;
-    padding: 14px 18px;
-}}
-
-QFrame#Banner[tone="info"] {{
-    background: #F3F4F6;
-}}
-
-QFrame#Banner[tone="success"] {{
-    background: {BrandColors.GREEN_100};
-}}
-
-QFrame#Banner[tone="warning"] {{
-    background: {BrandColors.YELLOW_100};
-}}
-
-QFrame#Banner[tone="error"] {{
-    background: {BrandColors.RED_100};
-}}
-
-QLabel#BannerTitle {{
-    font-size: 16px;
-    font-weight: {Typography.WEIGHTS["bold"]};
-}}
-
-QLabel#BannerMessage {{
-    font-size: 14px;
-    color: {tokens.muted_foreground};
-}}
-
-/* ==========================
-   PRODUCT ELEMENTS
-   ========================== */
-
-QLabel#ProductPhoto {{
-    background: {tokens.accent};
-    border: none;
-    border-radius: {Radius.XL}px;
-    color: {tokens.muted_foreground};
-    font-size: 16px;
-    font-weight: {Typography.WEIGHTS["bold"]};
-}}
-
-QLabel#ProductTitle {{
-    font-size: 18px;
-    font-weight: {Typography.WEIGHTS["bold"]};
-    color: {tokens.foreground};
-}}
-
-QLabel#ProductDescription {{
-    font-size: 14px;
-    color: {tokens.muted_foreground};
-}}
-
-QLabel#ProductPrice {{
-    font-size: 28px;
-    font-weight: {Typography.WEIGHTS["light"]};
-    color: {tokens.foreground};
-}}
-
-QLabel#ProductCategory {{
-    font-size: 13px;
-    color: {tokens.muted_foreground};
-    font-weight: {Typography.WEIGHTS["medium"]};
-}}
-
-QLabel#Badge {{
-    padding: 2px 10px;
-    border-radius: {Radius.FULL}px;
-    font-size: 12px;
-    font-weight: {Typography.WEIGHTS["semibold"]};
-}}
-
-QLabel#Badge[status="success"] {{
-    background: {BrandColors.GREEN_100};
-    color: {BrandColors.GREEN_600};
-}}
-
-QLabel#Badge[status="warning"] {{
-    background: {BrandColors.YELLOW_100};
-    color: {BrandColors.YELLOW_600};
-}}
-
-QLabel#Badge[status="error"] {{
-    background: {BrandColors.RED_100};
-    color: {BrandColors.RED_600};
-}}
-
-QLabel#Badge[status="info"] {{
-    background: #EEF2FF;
-    color: #4338CA;
-}}
-
-/* ==========================
-   PANEL ELEMENTS
-   ========================== */
-
-QFrame#DetailsPanel {{
-    background: #FFFFFF;
-    border-radius: {Radius.XL}px;
-}}
-
-QLabel#PanelCaption {{
-    color: {tokens.muted_foreground};
-    font-size: 13px;
-    font-weight: {Typography.WEIGHTS["semibold"]};
-    text-transform: uppercase;
-}}
-
-/* ==========================
-   PAYMENT METRICS
-   ========================== */
-
-QFrame#MetricCard {{
-    background: {BrandColors.PURPLE_50};
-    border: none;
-    border-radius: 24px;
-}}
-
-QLabel#MetricCaption {{
-    color: {tokens.muted_foreground};
-    font-size: 14px;
-    font-weight: {Typography.WEIGHTS["medium"]};
-}}
-
-QLabel#MetricValue {{
-    color: {tokens.primary};
-    font-size: 32px;
-    font-weight: {Typography.WEIGHTS["bold"]};
-}}
-
-QLabel#MetricValue[accent="true"] {{
-    color: {tokens.primary};
-}}
-
-/* ==========================
-   HERO / HEADINGS
-   ========================== */
-
-QLabel#HeroTitle {{
-    font-size: 36px;
-    font-weight: {Typography.WEIGHTS["black"]};
-    color: {tokens.foreground};
-}}
-
-QLabel#HeroSubtitle {{
-    font-size: 18px;
-    color: {tokens.muted_foreground};
-}}
-
-QLabel#Title {{
-    font-size: 28px;
-    font-weight: {Typography.WEIGHTS["bold"]};
-}}
-
-QLabel#Subtitle {{
-    font-size: 18px;
-    color: {tokens.muted_foreground};
-}}
-
-QLabel#SectionTitle {{
-    font-size: 15px;
-    font-weight: {Typography.WEIGHTS["semibold"]};
-    color: {tokens.muted_foreground};
-    text-transform: uppercase;
-}}
-
-QLabel#StatusMessage {{
-    font-size: 28px;
-    font-weight: {Typography.WEIGHTS["bold"]};
-    color: {tokens.foreground};
-}}
-
-QLabel#HumanMessage {{
-    font-size: 16px;
-    color: {tokens.muted_foreground};
-    line-height: 1.5;
-}}
-
-/* ==========================
-   PROCESSING / DELIVERY
-   ========================== */
-
-QProgressBar {{
-    background: {tokens.muted};
-    border: none;
-    border-radius: 5px;
-    height: 8px;
-    text-align: center;
-    font-size: 0;
-}}
-
-QProgressBar::chunk {{
-    background: #9333EA;
-    border-radius: 5px;
-}}
-
-QLabel#ProcessingLabel {{
-    font-size: 20px;
-    font-weight: {Typography.WEIGHTS["semibold"]};
-    color: {tokens.foreground};
-}}
-
-/* ==========================
-   THANK YOU SCREEN
-   ========================== */
-
-QWidget#ThankYouScreen {{
-    background: qlineargradient(x1:0 y1:0, x2:1 y2:1,
-        stop:0 #FDF2F8, stop:0.5 #FAF5FF, stop:1 #EFF6FF);
-}}
-
-QLabel#ThankYouTitle {{
-    color: {tokens.foreground};
-    font-size: 40px;
-    font-weight: {Typography.WEIGHTS["black"]};
-}}
-
-QLabel#ThankYouSubtitle {{
-    color: {tokens.muted_foreground};
-    font-size: 20px;
-}}
-
-/* ==========================
-   SERVICE / ADMIN
-   ========================== */
-
-QWidget#ServiceScreen {{
-    background: {BrandColors.GRAY_50};
-    color: {tokens.foreground};
-}}
-
-QGroupBox {{
-    background: #FFFFFF;
-    border: none;
-    border-radius: {Radius.XL}px;
-    margin-top: 18px;
-    padding: 16px 12px 12px 12px;
-    font-size: 15px;
-    font-weight: {Typography.WEIGHTS["semibold"]};
-    color: {tokens.foreground};
-}}
-
-QGroupBox::title {{
-    subcontrol-origin: margin;
-    subcontrol-position: top left;
-    left: 12px;
-    padding: 0 6px;
-    background: {BrandColors.GRAY_50};
-}}
-
-QCheckBox {{
-    color: {tokens.foreground};
-    font-size: 15px;
-    font-weight: {Typography.WEIGHTS["medium"]};
-    spacing: 10px;
-}}
-
-QCheckBox::indicator {{
-    width: 22px;
-    height: 22px;
-}}
-
-/* ==========================
-   ADMIN PANEL
-   ========================== */
-
-QWidget#AdminSidebar {{
-    background: #1E1B4B;
-}}
-
-QWidget#AdminContent {{
-    background: {BrandColors.GRAY_50};
-}}
-
-/* ==========================
-   INPUTS & FORMS
-   ========================== */
-
-QLineEdit[class="adminInput"] {{
-    min-height: 42px;
-    padding: 8px 12px;
-    border: 1px solid {tokens.input_border};
-    border-radius: {Radius.XL}px;
-    background: {tokens.input_bg};
-    color: {tokens.foreground};
-    font-size: 14px;
-    selection-background-color: {BrandColors.PURPLE_600};
-}}
-
-QLineEdit[class="adminInput"]:focus {{
-    border-color: {BrandColors.PURPLE_600};
-}}
-
-/* ==========================
-   TRANSITIONS / STATES
-   ========================== */
-
-QFrame[selected="true"] {{
-    background: #F3E8FF;
-}}
-
-QFrame[available="false"] {{
-    opacity: 0.5;
-}}
-
-QWidget[danger="true"] {{
-    color: {tokens.destructive};
-}}
-"""
+    qss_path = Path(__file__).parent / "assets" / "main.qss"
+    try:
+        with open(qss_path, encoding="utf-8") as f:
+            template = f.read()
+    except Exception:
+        # Fallback if asset is missing in development
+        return ""
+
+    context = {
+        "background": tokens.background,
+        "foreground": tokens.foreground,
+        "font_family": Typography.FONT_FAMILY,
+        "base_size": Typography.BASE_SIZE,
+        "weight_normal": Typography.WEIGHTS["normal"],
+        "weight_medium": Typography.WEIGHTS["medium"],
+        "weight_semibold": Typography.WEIGHTS["semibold"],
+        "weight_bold": Typography.WEIGHTS["bold"],
+        "weight_black": Typography.WEIGHTS["black"],
+        "weight_light": Typography.WEIGHTS["light"],
+        "radius_sm": Radius.SM,
+        "radius_md": Radius.MD,
+        "radius_lg": Radius.LG,
+        "radius_xl": Radius.XL,
+        "radius_full": Radius.FULL,
+        "primary": tokens.primary,
+        "primary_hover": "#F08A1A" if tokens.primary == "#EF7D00" else tokens.primary,
+        "muted": tokens.muted,
+        "muted_foreground": tokens.muted_foreground,
+        "accent": tokens.accent,
+        "accent_foreground": tokens.accent_foreground,
+        "secondary": tokens.secondary,
+        "destructive": tokens.destructive,
+        "destructive_foreground": tokens.destructive_foreground,
+        "destructive_hover": "#B31234" if tokens.destructive == "#D4183D" else tokens.destructive,
+        "card": tokens.card,
+        "input_bg": tokens.input_bg,
+        "input_border": tokens.input_border,
+        "chart_1": tokens.chart_1,
+        "chart_2": tokens.chart_2,
+        "chart_3": tokens.chart_3,
+        "chart_2_alpha_08": "rgba(236, 72, 153, 0.08)"
+        if tokens.chart_2 == "#EC4899"
+        else "rgba(239, 125, 0, 0.08)",
+        "chart_2_alpha_15": "rgba(236, 72, 153, 0.15)"
+        if tokens.chart_2 == "#EC4899"
+        else "rgba(239, 125, 0, 0.15)",
+        "product_card_hover": "#FDF2F8" if tokens is not DARK_TOKENS else "#3A322F",
+        "gray_50": BrandColors.GRAY_50,
+        "gray_100": BrandColors.GRAY_100,
+        "success": tokens.success,
+        "success_bg": BrandColors.GREEN_100
+        if tokens is not DARK_TOKENS
+        else "rgba(22, 163, 74, 0.2)",
+        "warning": tokens.warning,
+        "warning_bg": BrandColors.YELLOW_100
+        if tokens is not DARK_TOKENS
+        else "rgba(202, 138, 4, 0.2)",
+        "error": tokens.error,
+        "error_bg": BrandColors.RED_100 if tokens is not DARK_TOKENS else "rgba(220, 38, 38, 0.2)",
+        "info_bg": "#EEF2FF" if tokens is not DARK_TOKENS else "rgba(37, 99, 235, 0.2)",
+        "info_fg": "#4338CA" if tokens is not DARK_TOKENS else "#93C5FD",
+        "thank_you_stop_0": "#FDF2F8" if tokens is not DARK_TOKENS else "#2A2422",
+        "thank_you_stop_1": "#FAF5FF" if tokens is not DARK_TOKENS else "#2A2422",
+        "thank_you_stop_2": "#EFF6FF" if tokens is not DARK_TOKENS else "#2A2422",
+        "selected_bg": "#F3E8FF" if tokens is not DARK_TOKENS else "#453833",
+    }
+
+    return template.format(**context)
 
 
 ThemeName = Literal["light", "dark", "auto"]
@@ -642,6 +129,10 @@ def set_theme(name: ThemeName) -> None:
     app = cast(QApplication | None, QApplication.instance())
     if app is not None:
         app.setProperty("flower_vending_theme", name)
+        # Force re-rendering of sheets
+        global _LIGHT_SHEET, _DARK_SHEET
+        _LIGHT_SHEET = None
+        _DARK_SHEET = None
         app.setStyleSheet(current_stylesheet())
 
 

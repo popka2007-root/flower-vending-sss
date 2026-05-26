@@ -55,6 +55,7 @@ class SQLiteDatabase:
         self._path = Path(path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = RLock()
+        self._in_manual_transaction = False
         self._connection = sqlite3.connect(str(self._path), check_same_thread=False)
         if hasattr(self._connection, "set_check_same_thread"):
             self._connection.set_check_same_thread(True)
@@ -114,7 +115,8 @@ class SQLiteDatabase:
             return
         with self._lock:
             self._connection.execute(sql, parameters)
-            self._connection.commit()
+            if not self._in_manual_transaction:
+                self._connection.commit()
 
     def executemany(
         self,
@@ -129,7 +131,8 @@ class SQLiteDatabase:
             return
         with self._lock:
             self._connection.executemany(sql, parameter_sets)
-            self._connection.commit()
+            if not self._in_manual_transaction:
+                self._connection.commit()
 
     def insert(
         self,
@@ -146,7 +149,8 @@ class SQLiteDatabase:
             return cursor.lastrowid
         with self._lock:
             cursor = self._connection.execute(sql, parameters)
-            self._connection.commit()
+            if not self._in_manual_transaction:
+                self._connection.commit()
             if cursor.lastrowid is None:
                 raise RuntimeError("SQLite insert did not produce a row id")
             return cursor.lastrowid
@@ -175,14 +179,20 @@ class SQLiteDatabase:
     def transaction(self) -> Iterator[sqlite3.Connection]:
         self._verify_thread_safety()
         with self._lock:
+            if self._in_manual_transaction:
+                yield self._connection
+                return
+
+            self._in_manual_transaction = True
             try:
                 self._connection.execute("BEGIN")
                 yield self._connection
+                self._connection.commit()
             except Exception:
                 self._connection.rollback()
                 raise
-            else:
-                self._connection.commit()
+            finally:
+                self._in_manual_transaction = False
 
     @contextmanager
     def savepoint(self, name: str) -> Iterator[sqlite3.Connection]:

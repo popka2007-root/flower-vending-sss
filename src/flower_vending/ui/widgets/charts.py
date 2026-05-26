@@ -6,6 +6,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
+from flower_vending.ui.design_tokens import LIGHT_TOKENS, current_color_tokens
+
 
 class BarChart(QWidget):
     """Simple vertical bar chart matching reference purple bars."""
@@ -14,9 +16,10 @@ class BarChart(QWidget):
         super().__init__(parent)
         self.setMinimumHeight(200)
         self._data: dict[str, float] = {}
-        self._bar_color = QColor("#8b5cf6")
-        self._grid_color = QColor("#f0f0f0")
-        self._text_color = QColor("#9ca3af")
+        tokens = current_color_tokens()
+        self._bar_color = QColor(tokens.chart_1)
+        self._grid_color = QColor(tokens.chart_grid)
+        self._text_color = QColor(tokens.chart_text)
 
     def set_data(self, data: dict[str, float]) -> None:
         self._data = data
@@ -82,7 +85,8 @@ class PieChart(QWidget):
         super().__init__(parent)
         self.setMinimumHeight(180)
         self._data: dict[str, tuple[float, str]] = {}
-        self._colors = ["#8b5cf6", "#ec4899", "#06b6d4"]
+        tokens = LIGHT_TOKENS
+        self._colors = [tokens.chart_1, tokens.chart_2, tokens.chart_3]
 
     def set_data(self, data: dict[str, tuple[float, str]]) -> None:
         self._data = data
@@ -112,7 +116,8 @@ class PieChart(QWidget):
             p.drawPie(cx - r, cy - r, r * 2, r * 2, start_angle, span)
             start_angle += span
 
-        p.setBrush(QColor("#FFFFFF"))
+        tokens = current_color_tokens()
+        p.setBrush(QColor(tokens.card))
         p.drawEllipse(cx - r // 2, cy - r // 2, r, r)
 
         font = QFont()
@@ -120,12 +125,13 @@ class PieChart(QWidget):
         p.setFont(font)
         legend_x = cx + r + 12
         legend_y = cy - len(self._data) * 14
+        text_color = QColor(tokens.chart_text)
         for i, (label, (val, color)) in enumerate(self._data.items()):
             yy = legend_y + i * 20
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor(color))
             p.drawEllipse(legend_x, yy, 8, 8)
-            p.setPen(self._text_color() if hasattr(self, "_text_color") else QColor("#9ca3af"))
+            p.setPen(text_color)
             pct = int(val / total * 100) if total > 0 else 0
             p.drawText(legend_x + 14, yy + 10, f"{label} {pct}%")
 
