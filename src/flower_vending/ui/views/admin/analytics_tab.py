@@ -21,7 +21,7 @@ class _BarChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._data: dict[str, float] = {}
-        self._bar_color = QColor("#9333EA")
+        self._bar_color = QColor(BrandColors.ORANGE_PRIMARY)
         self._grid_color = QColor("#F3F4F6")
         self._text_color = QColor("#6B7280")
         self._font = QFont()
@@ -90,7 +90,7 @@ class _BarChart(QWidget):
             bar_w = bar_max_w
 
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QBrush(self._bar_color))
+            painter.setBrush(QBrush(QColor(BrandColors.ORANGE_PRIMARY)))
             painter.drawRoundedRect(int(bar_x), int(bar_y), int(bar_w), int(bar_h), 4, 4)
 
             # Label
@@ -110,7 +110,7 @@ class _BarChart(QWidget):
 
 
 class _PieChart(QWidget):
-    COLORS = ["#9333EA", "#EC4899", "#06B6D4", "#F59E0B", "#10B981", "#6366F1"]
+    COLORS = [BrandColors.ORANGE_PRIMARY, "#F08A1A", "#CA8A04", "#F59E0B", "#8C7B73", "#332A26"]
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -221,7 +221,7 @@ class _ProductBar(QWidget):
         fill.setFixedWidth(int(160 * pct / 100))
         fill.setFixedHeight(8)
         fill.setStyleSheet(
-            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #EC4899, stop:1 #9333EA); border-radius: 4px;"
+            f"background: {BrandColors.ORANGE_PRIMARY}; border-radius: 4px;"
         )
         bar_layout.addWidget(fill)
         bar_layout.addStretch(1)
@@ -269,24 +269,24 @@ class AnalyticsTab(QWidget):
         charts_row.setSpacing(20)
 
         bar_card = QWidget()
-        bar_card.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;")
+        bar_card.setStyleSheet(f"background: {BrandColors.CREAM_CARD}; border-radius: {Radius.XL2}px; border: none;")
         bar_card.setMinimumHeight(300)
         bar_layout = QVBoxLayout(bar_card)
         bar_layout.setContentsMargins(20, 16, 20, 16)
         bar_title = QLabel("Продажи по дням (неделя)")
-        bar_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};")
+        bar_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']}; color: {BrandColors.TEXT_MAIN};")
         bar_layout.addWidget(bar_title)
         self._bar_chart = _BarChart()
         bar_layout.addWidget(self._bar_chart, 1)
         charts_row.addWidget(bar_card, 2)
 
         pie_card = QWidget()
-        pie_card.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;")
+        pie_card.setStyleSheet(f"background: {BrandColors.CREAM_CARD}; border-radius: {Radius.XL2}px; border: none;")
         pie_card.setMinimumHeight(300)
         pie_layout = QVBoxLayout(pie_card)
         pie_layout.setContentsMargins(20, 16, 20, 16)
         pie_title = QLabel("Способы оплаты")
-        pie_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};")
+        pie_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']}; color: {BrandColors.TEXT_MAIN};")
         pie_layout.addWidget(pie_title)
         self._pie_chart = _PieChart()
         pie_layout.addWidget(self._pie_chart, 1)
@@ -295,11 +295,11 @@ class AnalyticsTab(QWidget):
         layout.addLayout(charts_row)
 
         top_card = QWidget()
-        top_card.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL}px; border: none;")
+        top_card.setStyleSheet(f"background: {BrandColors.CREAM_CARD}; border-radius: {Radius.XL2}px; border: none;")
         top_layout = QVBoxLayout(top_card)
         top_layout.setContentsMargins(20, 16, 20, 16)
         top_title = QLabel("Топ товаров")
-        top_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']};")
+        top_title.setStyleSheet(f"font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']}; color: {BrandColors.TEXT_MAIN};")
         top_layout.addWidget(top_title)
         self._top_list = QVBoxLayout()
         top_layout.addLayout(self._top_list)

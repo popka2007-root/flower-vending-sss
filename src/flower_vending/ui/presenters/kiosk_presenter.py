@@ -493,8 +493,14 @@ class KioskPresenter:
                     methods = [k for k, v in current.items() if v]
                     self._facade.set_payment_methods(methods)
             return await self._emit_current_render()
-        if action_id == "admin_save_settings":
-            self._facade.save_settings({})
+        if action_id.startswith("admin_save_settings:"):
+            import json
+            raw = action_id.split(":", 1)[1]
+            try:
+                settings = json.loads(raw)
+                self._facade.save_settings(settings)
+            except Exception:
+                logger.error("failed_to_parse_admin_settings")
             return await self._emit_current_render()
         if action_id.startswith("scenario:"):
             name = action_id.split(":", 1)[1]

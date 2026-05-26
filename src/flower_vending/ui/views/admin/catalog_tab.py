@@ -87,7 +87,7 @@ class _ProductDialog(QDialog):
         save = QPushButton("Сохранить" if product else "Добавить")
         save.setStyleSheet(
             f"QPushButton {{ padding: 8px 20px; border-radius: {Radius.MD}px; "
-            f"border: none; background: {BrandColors.PURPLE_600}; color: #FFFFFF; font-size: 14px; font-weight: 600; }}"
+            f"border: none; background: {BrandColors.ORANGE_PRIMARY}; color: #FFFFFF; font-size: 14px; font-weight: 600; }}"
         )
         save.clicked.connect(self._on_save)
         btns.addStretch(1)
@@ -130,10 +130,10 @@ class CatalogTab(QWidget):
         add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         add_btn.setFixedHeight(40)
         add_btn.setStyleSheet(
-            f"QPushButton {{ padding: 8px 20px; border-radius: {Radius.XL}px; "
+            f"QPushButton {{ padding: 8px 20px; border-radius: {Radius.XL2}px; "
             f"border: none; font-size: 14px; font-weight: {Typography.WEIGHTS['semibold']}; "
-            f"background: {BrandColors.PURPLE_600}; color: #FFFFFF; }}"
-            f"QPushButton:hover {{ background: {BrandColors.PINK_500}; }}"
+            f"background: {BrandColors.ORANGE_PRIMARY}; color: #FFFFFF; }}"
+            f"QPushButton:hover {{ background: #F08A1A; }}"
         )
         add_btn.clicked.connect(self._open_add_dialog)
         header.addWidget(add_btn)
@@ -175,7 +175,7 @@ class CatalogTab(QWidget):
 
     def _make_product_card(self, product: AdminCatalogItemViewModel) -> QWidget:
         card = QWidget()
-        card.setStyleSheet(f"background: #FFFFFF; border-radius: {Radius.XL2}px; border: none;")
+        card.setStyleSheet(f"background: {BrandColors.CREAM_CARD}; border-radius: {Radius.XL2}px; border: none;")
         card.setMinimumHeight(340)
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(0, 0, 0, 0)
@@ -219,7 +219,7 @@ class CatalogTab(QWidget):
 
         price_lbl = QLabel(product.price_text)
         price_lbl.setStyleSheet(
-            f"font-size: 18px; font-weight: {Typography.WEIGHTS['bold']}; color: {BrandColors.PURPLE_600};"
+            f"font-size: 18px; font-weight: {Typography.WEIGHTS['bold']}; color: {BrandColors.ORANGE_PRIMARY};"
         )
         info.addWidget(price_lbl)
 

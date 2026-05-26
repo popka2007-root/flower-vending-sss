@@ -1,0 +1,319 @@
+machine:
+  machine_id: flower-vending-sim-01
+  currency: RUB
+  startup_state: SELF_TEST
+  policies:
+    critical_temperature_celsius: 8.0
+    pickup_timeout_s: 60.0
+  service_mode:
+    pin: "0000"
+    lock_purchase_button: false
+    visible_button: false
+
+runtime:
+  health_poll_interval_s: 0.5
+  validator_event_timeout_s: 0.05
+  watchdog_timeout_s: 30.0
+  event_log_limit: 100
+  persist_applied_config: true
+  seed_demo_data: true
+
+ui:
+  window_title: "🌺 ЭКСПРЕСС БУКЕТ"
+  kiosk_fullscreen: true
+
+catalog:
+  items:
+    - product_id: roses_ecuador_7
+      slot_id: A1
+      name: roses_ecuador_7
+      display_name: Розы Эквадор 7 шт.
+      category: bouquets
+      price_minor_units: 150000
+      quantity: 4
+      capacity: 8
+      is_bouquet: true
+      enabled: true
+      temperature_profile: cooled
+      metadata:
+        short_description: Яркие весенние цветы
+        image_path: products/roses-ecuador-7.jpg
+        color_theme: pink
+        accent: "#ec4899"
+        freshness_note: Свежая поставка
+        size_label: Стандарт
+    - product_id: white_tulips_9
+      slot_id: A2
+      name: white_tulips_9
+      display_name: Радужный букет
+      category: bouquets
+      price_minor_units: 220000
+      quantity: 3
+      capacity: 8
+      is_bouquet: true
+      enabled: true
+      temperature_profile: cooled
+      metadata:
+        short_description: Разноцветные тюльпаны
+        image_path: products/white-tulips-9.jpg
+        color_theme: pink
+        accent: "#ec4899"
+        freshness_note: Свежая поставка
+        size_label: Стандарт
+    - product_id: gentle_mix
+      slot_id: B1
+      name: gentle_mix
+      display_name: Тюльпаны premium
+      category: tulips
+      price_minor_units: 180000
+      quantity: 3
+      capacity: 6
+      is_bouquet: true
+      enabled: true
+      temperature_profile: cooled
+      metadata:
+        short_description: Элегантные тюльпаны
+        image_path: products/gentle-mix.jpg
+        color_theme: green
+        accent: "#1f6f4a"
+        freshness_note: Свежая поставка
+        size_label: Премиум
+    - product_id: compliment_bouquet
+      slot_id: B2
+      name: compliment_bouquet
+      display_name: Летний рай
+      category: gift
+      price_minor_units: 250000
+      quantity: 5
+      capacity: 6
+      is_bouquet: true
+      enabled: true
+      temperature_profile: cooled
+      metadata:
+        short_description: Роскошная композиция
+        image_path: products/compliment-bouquet.jpg
+        color_theme: pink
+        accent: "#ec4899"
+        freshness_note: Свежая поставка
+        size_label: Большой
+    - product_id: peony_roses
+      slot_id: C1
+      name: peony_roses
+      display_name: Нежность
+      category: roses
+      price_minor_units: 190000
+      quantity: 1
+      capacity: 4
+      is_bouquet: true
+      enabled: true
+      temperature_profile: cooled
+      metadata:
+        short_description: Букет пастельных оттенков
+        image_path: products/peony-roses.jpg
+        color_theme: blush
+        accent: "#ec4899"
+        freshness_note: Свежая поставка
+        size_label: Средний
+    - product_id: seasonal_bouquet
+      slot_id: C2
+      name: seasonal_bouquet
+      display_name: Калейдоскоп
+      category: seasonal
+      price_minor_units: 210000
+      quantity: 2
+      capacity: 5
+      is_bouquet: true
+      enabled: true
+      temperature_profile: cooled
+      metadata:
+        short_description: Яркий ассорти
+        image_path: products/seasonal-bouquet.jpg
+        color_theme: yellow
+        accent: "#ec4899"
+        freshness_note: Свежая поставка
+        size_label: Средний
+
+persistence:
+  sqlite_path: var/data/flower_vending_simulator.db
+  busy_timeout_ms: 5000
+  enable_wal: true
+  synchronous: FULL
+
+logging:
+  level: DEBUG
+  directory: var/log
+  filename: flower_vending.simulator.jsonl
+  json: true
+  stderr: true
+  rotation:
+    max_bytes: 5242880
+    backup_count: 3
+
+platform:
+  target_os: generic
+  kiosk_mode: false
+  autostart_mode: none
+  watchdog:
+    enabled: false
+    adapter: simulator
+    policy:
+      timeout_s: 1.0
+      retry_count: 1
+      retryable_faults: [command_timeout, transient_command_failure, communication_error]
+      non_retryable_faults:
+        - ambiguous_physical_result
+        - physical_state_mismatch
+        - reconciliation_required
+        - unsupported_operation
+        - configuration_error
+      require_manual_review_on_ambiguous_result: true
+    settings: {}
+
+simulator:
+  enabled: true
+  startup_scenario:
+  scenario_suite:
+    - normal_sale
+    - insufficient_change
+    - bill_rejected
+    - partial_payout
+    - product_vend_failure
+    - door_open
+    - critical_temperature
+    - inventory_mismatch
+    - pickup_timeout
+  accepted_bill_denominations_minor: [50000, 100000, 200000, 500000]
+  quick_insert_bill_denominations_minor: [50000, 100000, 200000, 500000]
+  change_inventory:
+    100000: 10
+    50000: 10
+    10000: 20
+    5000: 20
+    1000: 50
+  initial_temperature_celsius: 4.0
+  initial_service_door_open: false
+  initial_inventory_presence: true
+  initial_inventory_confidence: 1.0
+  initial_faults: []
+
+devices:
+  bill_validator:
+    enabled: true
+    driver: dbv300sd
+    device_name: simulator_bill_validator_contract
+    transport_kind: serial
+    protocol_kind: serial
+    poll_interval_s: 0.2
+    startup_disable_acceptance: true
+    fallback_disable_on_fault: true
+    requires_hardware_confirmation: false
+    accepted_denominations_minor: [50000, 100000, 200000, 500000]
+    policy: &simulator_device_policy
+      timeout_s: 1.0
+      retry_count: 1
+      retryable_faults: [command_timeout, transient_command_failure, communication_error]
+      non_retryable_faults:
+        - ambiguous_physical_result
+        - physical_state_mismatch
+        - reconciliation_required
+        - unsupported_operation
+        - configuration_error
+      require_manual_review_on_ambiguous_result: true
+    serial:
+      port: SIMULATOR
+      baudrate: 9600
+      bytesize: 8
+      parity: N
+      stopbits: 1
+      read_timeout_s: 0.2
+      write_timeout_s: 0.2
+
+  change_dispenser:
+    enabled: true
+    driver: simulator
+    device_name: mock_change_dispenser
+    mapping: simulator_change_dispenser
+    timeouts_ms:
+      dispense: 100
+    policy: *simulator_device_policy
+    settings: {}
+    requires_hardware_confirmation: false
+
+  motor_controller:
+    enabled: true
+    driver: simulator
+    device_name: mock_motor_controller
+    mapping: simulator_motor
+    timeouts_ms:
+      vend: 100
+      home: 100
+    policy: *simulator_device_policy
+    settings: {}
+    requires_hardware_confirmation: false
+
+  cooling_controller:
+    enabled: true
+    driver: simulator
+    device_name: mock_cooling_controller
+    mapping: simulator_cooling
+    timeouts_ms:
+      command: 100
+    policy: *simulator_device_policy
+    settings: {}
+    requires_hardware_confirmation: false
+
+  window_controller:
+    enabled: true
+    driver: simulator
+    device_name: mock_window_controller
+    mapping: simulator_window
+    timeouts_ms:
+      open: 100
+      close: 100
+    policy: *simulator_device_policy
+    settings: {}
+    requires_hardware_confirmation: false
+
+  temperature_sensor:
+    enabled: true
+    driver: simulator
+    device_name: mock_temperature_sensor
+    mapping: simulator_temperature
+    timeouts_ms:
+      read: 100
+    policy: *simulator_device_policy
+    settings: {}
+    requires_hardware_confirmation: false
+
+  door_sensor:
+    enabled: true
+    driver: simulator
+    device_name: mock_door_sensor
+    mapping: simulator_door
+    timeouts_ms:
+      read: 100
+    policy: *simulator_device_policy
+    settings: {}
+    requires_hardware_confirmation: false
+
+  inventory_sensor:
+    enabled: true
+    driver: simulator
+    device_name: mock_inventory_sensor
+    mapping: simulator_inventory
+    timeouts_ms:
+      read: 100
+    policy: *simulator_device_policy
+    settings: {}
+    requires_hardware_confirmation: false
+
+  position_sensor:
+    enabled: true
+    driver: simulator
+    device_name: mock_position_sensor
+    mapping: simulator_position
+    timeouts_ms:
+      read: 100
+    policy: *simulator_device_policy
+    settings: {}
+    requires_hardware_confirmation: false

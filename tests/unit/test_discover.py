@@ -77,16 +77,6 @@ def test_format_discovery_not_found(mock_list_com_ports: MagicMock) -> None:
     assert format_discovery(results) == expected_output
 
 
-def test_format_discovery_legacy_scalar() -> None:
-    """Test format_discovery with legacy format flag for scalar values."""
-    results: dict[str, Any] = {"Status": "OK"}
-
-    expected_lines = ["Device Discovery Report", "=======================", "\nStatus:", "  OK"]
-    expected_output = "\n".join(expected_lines)
-
-    assert format_discovery(results, legacy_format=True) == expected_output
-
-
 @patch("flower_vending.runtime.discover.list_com_ports")
 def test_format_discovery_empty_dict(mock_list_com_ports: MagicMock) -> None:
     """Test format_discovery with an empty dictionary for standard format."""
@@ -100,51 +90,6 @@ def test_format_discovery_empty_dict(mock_list_com_ports: MagicMock) -> None:
     expected_output = "\n".join(expected_lines)
 
     assert format_discovery(results) == expected_output
-
-
-def test_format_discovery_empty_dict_legacy() -> None:
-    """Test format_discovery with an empty dictionary for legacy format."""
-    results: dict[str, Any] = {}
-
-    expected_lines = [
-        "Device Discovery Report",
-        "=======================",
-    ]
-    expected_output = "\n".join(expected_lines)
-
-    assert format_discovery(results, legacy_format=True) == expected_output
-
-
-def test_format_discovery_legacy_nested_dict() -> None:
-    """Test format_discovery with deeply nested dicts (though the function flattens 1 level)."""
-    results: dict[str, Any] = {"Config": {"Settings": {"Depth": "Deep"}}}
-
-    expected_lines = [
-        "Device Discovery Report",
-        "=======================",
-        "\nConfig:",
-        "  Settings: {'Depth': 'Deep'}",
-    ]
-    expected_output = "\n".join(expected_lines)
-
-    assert format_discovery(results, legacy_format=True) == expected_output
-
-
-def test_format_discovery_legacy_malformed_data() -> None:
-    """Test format_discovery handles malformed/None data properly in legacy format."""
-    results: dict[str, Any] = {"NullCategory": None, "IntCategory": 123}
-
-    expected_lines = [
-        "Device Discovery Report",
-        "=======================",
-        "\nNullCategory:",
-        "  None",
-        "\nIntCategory:",
-        "  123",
-    ]
-    expected_output = "\n".join(expected_lines)
-
-    assert format_discovery(results, legacy_format=True) == expected_output
 
 
 @patch("serial.tools.list_ports.comports")
@@ -395,35 +340,3 @@ async def test_discover_arduino_serial_init_exception(
         "response": "",
         "type": "unknown",
     }
-
-
-def test_format_discovery_legacy_list() -> None:
-    """Test format_discovery with legacy format flag for list values."""
-    results: dict[str, Any] = {"Devices": ["Device A", "Device B"]}
-
-    expected_lines = [
-        "Device Discovery Report",
-        "=======================",
-        "\nDevices:",
-        "  - Device A",
-        "  - Device B",
-    ]
-    expected_output = "\n".join(expected_lines)
-
-    assert format_discovery(results, legacy_format=True) == expected_output
-
-
-def test_format_discovery_legacy_dict() -> None:
-    """Test format_discovery with legacy format flag for dict values."""
-    results: dict[str, Any] = {"Config": {"Port": "COM1", "Baudrate": 115200}}
-
-    expected_lines = [
-        "Device Discovery Report",
-        "=======================",
-        "\nConfig:",
-        "  Port: COM1",
-        "  Baudrate: 115200",
-    ]
-    expected_output = "\n".join(expected_lines)
-
-    assert format_discovery(results, legacy_format=True) == expected_output
