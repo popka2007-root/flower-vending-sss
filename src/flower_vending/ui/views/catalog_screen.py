@@ -559,7 +559,7 @@ class CatalogScreenWidget(QWidget):
             self._overlay.setGeometry(0, 0, self.width(), self.height())
         else:
             self._overlay.setGeometry(0, 0, self.width(), self.height())
-        self._relayout_grid()
+        QTimer.singleShot(0, self._reposition_all_images)
         QTimer.singleShot(0, self._reposition_cart_badge)
 
     def _toggle_cart(self) -> None:
@@ -762,6 +762,9 @@ class CatalogScreenWidget(QWidget):
         photo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._load_photo(item, photo, image_wrap)
 
+        image_wrap._last_rounded_w = -1
+        image_wrap._last_rounded_h = -1
+
         def _reposition_image() -> None:
             pw = image_wrap.width()
             ph = image_wrap.height()
@@ -773,8 +776,11 @@ class CatalogScreenWidget(QWidget):
                 and photo._original_pixmap
                 and not photo._original_pixmap.isNull()
             ):
-                rounded = self._get_rounded_pixmap(photo._original_pixmap, pw, ph, 24)
-                photo.setPixmap(rounded)
+                if image_wrap._last_rounded_w != pw or image_wrap._last_rounded_h != ph:
+                    rounded = self._get_rounded_pixmap(photo._original_pixmap, pw, ph, 24)
+                    photo.setPixmap(rounded)
+                    image_wrap._last_rounded_w = pw
+                    image_wrap._last_rounded_h = ph
 
         image_wrap._reposition_image = _reposition_image
         layout.addWidget(image_wrap)
