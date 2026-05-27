@@ -213,6 +213,12 @@ class IconButton(QPushButton):
         self.setObjectName("IconButton")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedSize(size, size)
+        self.setStyleSheet(
+            f"QPushButton#IconButton {{"
+            f"min-width: {size}px; max-width: {size}px; "
+            f"min-height: {size}px; max-height: {size}px;"
+            f"}}"
+        )
         self.setIcon(icon(icon_name, icon_size, color))
         self.setIconSize(QSize(icon_size, icon_size))
         repolish(self)

@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from flower_vending.ui.icons import IconName, icon
+from flower_vending.ui.widgets.modern import IconButton
 
 
 class PinScreenWidget(QWidget):
@@ -119,13 +120,9 @@ class PinScreenWidget(QWidget):
         zero_btn = self._make_key("0")
         grid.addWidget(zero_btn, 3, 1, Qt.AlignmentFlag.AlignCenter)
 
-        del_btn = QPushButton()
+        del_btn = IconButton(IconName.DELETE, size=80, icon_size=22, color="#FFFFFF")
         del_btn.setAccessibleName("Стереть")
-        del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         del_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        del_btn.setFixedSize(80, 80)
-        del_btn.setIcon(icon(IconName.DELETE, 22, "#FFFFFF"))
-        del_btn.setIconSize(del_btn.size())
         del_btn.setStyleSheet(
             "QPushButton {"
             "min-width: 80px; max-width: 80px; min-height: 80px; max-height: 80px;"
