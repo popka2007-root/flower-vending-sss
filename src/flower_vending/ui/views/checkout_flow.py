@@ -14,6 +14,7 @@ from flower_vending.ui.design_tokens import (
     current_color_tokens,
 )
 from flower_vending.ui.icons import IconName, icon
+from flower_vending.ui.widgets.modern import IconButton
 
 G = "qlineargradient(x1:0 y1:0, x2:1 y2:0, stop:0 #EC4899, stop:1 #9333EA)"
 G_HOVER = "qlineargradient(x1:0 y1:0, x2:1 y2:0, stop:0 #F062A8, stop:1 #A855F7)"
@@ -170,13 +171,9 @@ class CheckoutFlow(QWidget):
         hl.setContentsMargins(_px(self, 6), 0, _px(self, 6), 0)
         hl.setSpacing(_px(self, 2))
 
-        back = QPushButton()
+        back = IconButton(IconName.ARROW_LEFT, size=36, icon_size=22, color="#374151")
         back.setAccessibleName("Назад")
         back.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        back.setCursor(Qt.CursorShape.PointingHandCursor)
-        back.setFixedSize(36, 36)
-        back.setIcon(icon(IconName.ARROW_LEFT, 22, "#374151"))
-        back.setIconSize(back.size())
         back.setStyleSheet("QPushButton { border:none; background:transparent; }")
         back.clicked.connect(self.back_requested.emit)
         hl.addWidget(back)

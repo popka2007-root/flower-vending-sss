@@ -35,6 +35,7 @@ from flower_vending.ui.viewmodels import (
     CatalogItemViewModel,
     CatalogScreenViewModel,
 )
+from flower_vending.ui.widgets.modern import IconButton
 
 SP = 4
 
@@ -482,12 +483,9 @@ class CatalogScreenWidget(QWidget):
         self._cart_title.setFont(_f(20, 700))
         self._cart_title.setStyleSheet("color: #111827;")
 
-        close_btn = QPushButton()
+        close_btn = IconButton(IconName.X, size=36, icon_size=20, color="#9CA3AF")
         close_btn.setAccessibleName("Закрыть")
-        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         close_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        close_btn.setFixedSize(36, 36)
-        close_btn.setIcon(icon(IconName.X, 20, "#9CA3AF"))
         # Статичная кнопка без hover
         close_btn.setStyleSheet("QPushButton { border: none; background: transparent; }")
         close_btn.clicked.connect(self._hide_cart)
@@ -906,11 +904,8 @@ class CatalogScreenWidget(QWidget):
 
         pid, sid = item.product_id, item.slot_id
 
-        minus_btn = QPushButton()
+        minus_btn = IconButton(IconName.MINUS, size=26, icon_size=14, color="#374151")
         minus_btn.setAccessibleName("Уменьшить количество")
-        minus_btn.setFixedSize(26, 26)
-        minus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        minus_btn.setIcon(icon(IconName.MINUS, 14, "#374151"))
         # Статичная кнопка
         minus_btn.setStyleSheet("QPushButton { background: transparent; border: none; }")
         minus_btn.clicked.connect(
@@ -923,11 +918,8 @@ class CatalogScreenWidget(QWidget):
         count_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         count_lbl.setFixedWidth(20)
 
-        plus_btn = QPushButton()
+        plus_btn = IconButton(IconName.PLUS, size=26, icon_size=14, color=PRIMARY_COLOR)
         plus_btn.setAccessibleName("Увеличить количество")
-        plus_btn.setFixedSize(26, 26)
-        plus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        plus_btn.setIcon(icon(IconName.PLUS, 14, PRIMARY_COLOR))
         if item.quantity >= item.available_quantity:
             plus_btn.setEnabled(False)
             plus_btn.setStyleSheet(
